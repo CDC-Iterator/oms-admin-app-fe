@@ -1,0 +1,257 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-600.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
+
+@custom-variant dark (&:is(.dark *));
+
+* {
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------------
+ * Status "stamp chip" — the one signature element reused everywhere a
+ * status appears (order payment/fulfillment state, inventory level,
+ * fulfillment status). Uppercase, tracked, monospace, tinted pill with a
+ * solid dot — reads like a rubber-stamp mark on a manifest, not a generic
+ * colored badge.
+ * ------------------------------------------------------------------- */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.55rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.status-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.status-chip--success {
+  background: color-mix(in srgb, var(--status-success) 14%, white);
+  color: color-mix(in srgb, var(--status-success) 70%, black);
+  border-color: color-mix(in srgb, var(--status-success) 35%, white);
+}
+
+.status-chip--pending {
+  background: color-mix(in srgb, var(--status-pending) 14%, white);
+  color: color-mix(in srgb, var(--status-pending) 65%, black);
+  border-color: color-mix(in srgb, var(--status-pending) 35%, white);
+}
+
+.status-chip--danger {
+  background: color-mix(in srgb, var(--status-danger) 14%, white);
+  color: color-mix(in srgb, var(--status-danger) 65%, black);
+  border-color: color-mix(in srgb, var(--status-danger) 35%, white);
+}
+
+.status-chip--neutral {
+  background: color-mix(in srgb, var(--status-neutral) 14%, white);
+  color: color-mix(in srgb, var(--status-neutral) 55%, black);
+  border-color: color-mix(in srgb, var(--status-neutral) 35%, white);
+}
+
+.status-chip--info {
+  background: color-mix(in srgb, var(--status-info) 14%, white);
+  color: color-mix(in srgb, var(--status-info) 70%, black);
+  border-color: color-mix(in srgb, var(--status-info) 35%, white);
+}
+
+/* Live-sync eyebrow dot — a pulsing ring communicating that this list is
+ * fed by push webhooks, not a manual refresh. Reduced-motion safe. */
+.pulse-dot {
+  position: relative;
+  display: inline-flex;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pulse-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@theme inline {
+  --font-heading: "Space Grotesk", sans-serif;
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Warehouse-ledger palette: warm paper, ink text, deep teal as the working
+ * accent, with ochre/brick/moss/slate reserved for status chips only. */
+:root {
+  --background: #faf7f2;
+  --foreground: #211d18;
+  --card: #ffffff;
+  --card-foreground: #211d18;
+  --popover: #ffffff;
+  --popover-foreground: #211d18;
+  --primary: #235347;
+  --primary-foreground: #faf7f2;
+  --secondary: #efe8da;
+  --secondary-foreground: #211d18;
+  --muted: #f1ece2;
+  --muted-foreground: #7a7268;
+  --accent: #e4efea;
+  --accent-foreground: #1b4038;
+  --destructive: #a13d2c;
+  --border: #e7e0d3;
+  --input: #e7e0d3;
+  --ring: #235347;
+  --radius: 0.5rem;
+
+  --chart-1: #235347;
+  --chart-2: #b4740e;
+  --chart-3: #4b7a3d;
+  --chart-4: #4b5a66;
+  --chart-5: #a13d2c;
+
+  --sidebar: #f2ece0;
+  --sidebar-foreground: #211d18;
+  --sidebar-primary: #235347;
+  --sidebar-primary-foreground: #faf7f2;
+  --sidebar-accent: #235347;
+  --sidebar-accent-foreground: #faf7f2;
+  --sidebar-border: #e7e0d3;
+  --sidebar-ring: #235347;
+
+  /* Status-chip tones — referenced only via color-mix() above, never used raw. */
+  --status-success: #4b7a3d;
+  --status-pending: #b4740e;
+  --status-danger: #a13d2c;
+  --status-neutral: #4b5a66;
+  --status-info: #235347;
+}
+
+.dark {
+  --background: #1b1712;
+  --foreground: #f3eee4;
+  --card: #241f19;
+  --card-foreground: #f3eee4;
+  --popover: #241f19;
+  --popover-foreground: #f3eee4;
+  --primary: #4f9c86;
+  --primary-foreground: #0e1a16;
+  --secondary: #2e2820;
+  --secondary-foreground: #f3eee4;
+  --muted: #2a2419;
+  --muted-foreground: #b4aa9b;
+  --accent: #24463d;
+  --accent-foreground: #cfefe6;
+  --destructive: #e06a55;
+  --border: #3a332a;
+  --input: #3a332a;
+  --ring: #4f9c86;
+
+  --chart-1: #4f9c86;
+  --chart-2: #d99a3f;
+  --chart-3: #7cad6a;
+  --chart-4: #7f939f;
+  --chart-5: #e06a55;
+
+  --sidebar: #201b15;
+  --sidebar-foreground: #f3eee4;
+  --sidebar-primary: #4f9c86;
+  --sidebar-primary-foreground: #0e1a16;
+  --sidebar-accent: #2c5c50;
+  --sidebar-accent-foreground: #eaf7f2;
+  --sidebar-border: #3a332a;
+  --sidebar-ring: #4f9c86;
+
+  --status-success: #6fae5a;
+  --status-pending: #d99a3f;
+  --status-danger: #e06a55;
+  --status-neutral: #7f939f;
+  --status-info: #4f9c86;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
