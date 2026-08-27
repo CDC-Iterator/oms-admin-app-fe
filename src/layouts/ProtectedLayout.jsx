@@ -9,15 +9,29 @@ import { useAuth } from "@/hooks/useAuth.js";
 const PAGE_TITLES = {
   "/": "Dashboard",
   "/orders": "Orders",
+  "/pending": "Pending Orders",
   "/inventory": "Inventory",
+  "/mappings": "SKU / ID Mappings",
+  "/channels": "Channels",
+  "/locations": "Locations",
+  "/activity": "Activity Log",
+  "/reports": "Reports",
   "/fulfillments": "Fulfillments",
   "/customers": "Customers",
   "/users": "Users",
+  "/allocation": "Allocation Rules",
 };
 
 function PageTitle() {
   const { pathname } = useLocation();
-  const title = PAGE_TITLES[pathname] || "CDC OMS";
+  // Exact match first (covers every list screen); fall back to the longest
+  // matching prefix for nested routes like /orders/:id or /allocation/preview.
+  const title =
+    PAGE_TITLES[pathname] ??
+    Object.entries(PAGE_TITLES)
+      .filter(([path]) => path !== "/" && pathname.startsWith(path))
+      .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ??
+    "CDC OMS";
   return <h1 className="font-heading text-sm font-semibold">{title}</h1>;
 }
 
@@ -44,13 +58,19 @@ export default function ProtectedLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      {/* h-svh + overflow-hidden turns this into the one fixed-height frame for
+          everything right of the sidebar, so the header below can stay put
+          (shrink-0, never scrolls) while the content div underneath — the
+          only element with overflow-y-auto — is the single scroll region.
+          Previously neither had a height constraint, so the whole document
+          scrolled and the header scrolled away with it. */}
+      <SidebarInset className="h-svh overflow-hidden">
         <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-4" />
           <PageTitle />
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-6">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
           <Outlet />
         </div>
       </SidebarInset>

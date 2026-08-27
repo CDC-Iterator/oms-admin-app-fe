@@ -1,35 +1,35 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 
+import { omsApi } from "./omsApiBase.js";
 import { authApi } from "./services/auth.js";
 import { customersApi } from "./services/customers.js";
 import { fulfillmentsApi } from "./services/fulfillments.js";
-import { inventoryApi } from "./services/inventory.js";
-import { ordersApi } from "./services/orders.js";
-import { statsApi } from "./services/stats.js";
 import { usersApi } from "./services/users.js";
 import authReducer, { AUTH_STORAGE_KEY } from "./slices/authSlice.js";
+
+// The individual OMS domain files (services/orders.js, inventory.js,
+// mappings.js, pending.js, channels.js, locations.js, activity.js,
+// reports.js, stats.js, allocation.js) all call omsApi.injectEndpoints — they
+// don't need a line here, just an import somewhere before their hooks are
+// used, which happens naturally wherever a screen imports the hook it needs.
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     [authApi.reducerPath]: authApi.reducer,
     [usersApi.reducerPath]: usersApi.reducer,
-    [ordersApi.reducerPath]: ordersApi.reducer,
-    [inventoryApi.reducerPath]: inventoryApi.reducer,
+    [omsApi.reducerPath]: omsApi.reducer,
     [fulfillmentsApi.reducerPath]: fulfillmentsApi.reducer,
     [customersApi.reducerPath]: customersApi.reducer,
-    [statsApi.reducerPath]: statsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       authApi.middleware,
       usersApi.middleware,
-      ordersApi.middleware,
-      inventoryApi.middleware,
+      omsApi.middleware,
       fulfillmentsApi.middleware,
-      customersApi.middleware,
-      statsApi.middleware
+      customersApi.middleware
     ),
 });
 

@@ -1,21 +1,23 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
-
-import axiosBaseQuery from "../axiosBaseQuery.js";
+import { omsApi } from "../omsApiBase.js";
 import { unwrapList } from "../unwrapList.js";
 
-export const INVENTORY_API_REDUCER_KEY = "inventoryApi";
-
-export const inventoryApi = createApi({
-  reducerPath: INVENTORY_API_REDUCER_KEY,
-  baseQuery: axiosBaseQuery,
-  tagTypes: ["inventory"],
+export const inventoryApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
-    getInventoryItems: builder.query({
-      query: (params) => ({ url: "/api/inventory/", params }),
+    // The item-code pool: one honest available number per item, across every
+    // channel, with a per-location breakdown.
+    getInventoryPool: builder.query({
+      query: () => ({ url: "/api/inventory/pool/" }),
+      transformResponse: unwrapList,
+      providesTags: ["inventory"],
+    }),
+    // Expanding a pool row: the individual serials/barcodes under that item
+    // code — ownership, purchase price, location — the data allocation ranks.
+    getSerials: builder.query({
+      query: (itemCode) => ({ url: `/api/inventory/${itemCode}/serials/` }),
       transformResponse: unwrapList,
       providesTags: ["inventory"],
     }),
   }),
 });
 
-export const { useGetInventoryItemsQuery } = inventoryApi;
+export const { useGetInventoryPoolQuery, useGetSerialsQuery } = inventoryApi;

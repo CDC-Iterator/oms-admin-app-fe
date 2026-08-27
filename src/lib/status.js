@@ -66,3 +66,52 @@ export function stockLevel(available) {
   }
   return { tone: "success", label: "In stock" };
 }
+
+/** Reservation state on an OMS order (see mockDb.sellUnit/reverseOrder). */
+export function reservationTone(status) {
+  switch ((status || "").toLowerCase()) {
+    case "reserved":
+      return "success";
+    case "cancelled":
+      return "danger";
+    case "restocked":
+      return "neutral";
+    case "pending":
+      return "pending";
+    default:
+      return "neutral";
+  }
+}
+
+/** Channel connection health (Channels screen, order/mapping channel chips). */
+export function channelTone(status) {
+  switch ((status || "").toLowerCase()) {
+    case "connected":
+      return "success";
+    case "degraded":
+      return "pending";
+    case "disconnected":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+/** Sync/activity log entry outcome. */
+export function syncTone(status) {
+  switch ((status || "").toLowerCase()) {
+    case "ok":
+      return "success";
+    case "retry":
+      return "pending";
+    case "failed":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+/** SKU/ID mapping coverage — used on the Channels + Mappings screens. */
+export function mappingTone(mapped) {
+  return mapped ? "success" : "pending";
+}

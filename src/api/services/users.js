@@ -1,13 +1,13 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 
-import axiosBaseQuery from "../axiosBaseQuery.js";
+import baseQuery from "../baseQuery.js";
 import { unwrapList } from "../unwrapList.js";
 
 export const USERS_API_REDUCER_KEY = "usersApi";
 
 export const usersApi = createApi({
   reducerPath: USERS_API_REDUCER_KEY,
-  baseQuery: axiosBaseQuery,
+  baseQuery,
   tagTypes: ["users"],
   endpoints: (builder) => ({
     getUsers: builder.query({

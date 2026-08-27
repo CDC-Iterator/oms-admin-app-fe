@@ -1,12 +1,12 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 
-import axiosBaseQuery from "../axiosBaseQuery.js";
+import baseQuery from "../baseQuery.js";
 
 export const AUTH_API_REDUCER_KEY = "authApi";
 
 export const authApi = createApi({
   reducerPath: AUTH_API_REDUCER_KEY,
-  baseQuery: axiosBaseQuery,
+  baseQuery,
   tagTypes: ["auth"],
   endpoints: (builder) => ({
     login: builder.mutation({

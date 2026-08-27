@@ -1,17 +1,9 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
+import { omsApi } from "../omsApiBase.js";
 
-import axiosBaseQuery from "../axiosBaseQuery.js";
-
-export const STATS_API_REDUCER_KEY = "statsApi";
-
-// Backend returns { orders, inventory, fulfillments, customers } as plain
-// counts (see shopify/merchant_api/views.py StatsView) — not a paginated
-// list, so no unwrapList transform needed here.
-export const statsApi = createApi({
-  reducerPath: STATS_API_REDUCER_KEY,
-  baseQuery: axiosBaseQuery,
-  tagTypes: ["stats"],
+export const statsApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
+    // Dashboard control-tower numbers: oversell exposure, unmapped count,
+    // sync health, channels in sync, channel sales, recent activity feed.
     getStats: builder.query({
       query: () => ({ url: "/api/stats/" }),
       providesTags: ["stats"],

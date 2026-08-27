@@ -49,7 +49,10 @@ export default function DataTable({ columns, rows, loading, error, onRetry, empt
   }
 
   return (
-    <div className="overflow-hidden rounded-xl ring-1 ring-border">
+    // Not overflow-hidden: that would clip to this div's own bounds and make
+    // TableHeader's `sticky top-0` stick to it instead of the page's actual
+    // scroll region (see ProtectedLayout.jsx), pinning it uselessly in place.
+    <div className="rounded-xl ring-1 ring-border">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

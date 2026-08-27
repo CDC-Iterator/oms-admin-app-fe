@@ -16,5 +16,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Allow ngrok's tunnel subdomains through Vite's dev-server host check
+    // (blocks unrecognized Host headers by default since Vite 5).
+    allowedHosts: [".ngrok-free.app", ".ngrok.io", ".ngrok.app"],
   },
 });

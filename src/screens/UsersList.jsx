@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Label } from "@/components/ui/label.jsx";
+import { Select } from "@/components/ui/select.jsx";
 import {
   Sheet,
   SheetContent,
@@ -33,6 +34,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet.jsx";
+import { useGetLocationsQuery } from "../api/services/locations.js";
 import {
   useCreateUserMutation,
   useDeleteUserMutation,
@@ -43,6 +45,14 @@ import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
 import { formatApiError } from "../lib/errors.js";
 
+const ROLES = [
+  { value: "admin", label: "Admin", description: "Full access to every screen and module." },
+  { value: "fulfilment", label: "Fulfilment", description: "Scoped to specific locations and modules." },
+  { value: "reporting", label: "Reporting", description: "Read-only access, no write actions." },
+];
+
+const ROLE_TONE = { admin: "success", fulfilment: "info", reporting: "neutral" };
+
 const EMPTY_FORM = {
   id: null,
   username: "",
@@ -50,14 +60,21 @@ const EMPTY_FORM = {
   first_name: "",
   last_name: "",
   password: "",
-  is_staff: false,
-  is_superuser: false,
+  role: "reporting",
+  locations: [],
   is_active: true,
 };
 
-function UserForm({ open, onOpenChange, mode, form, setForm, onSubmit, error, isSaving }) {
+function UserForm({ open, onOpenChange, mode, form, setForm, onSubmit, error, isSaving, locationOptions }) {
   const set = (key) => (event) => setForm((f) => ({ ...f, [key]: event.target.value }));
   const setChecked = (key) => (checked) => setForm((f) => ({ ...f, [key]: checked }));
+  const toggleLocation = (code) =>
+    setForm((f) => ({
+      ...f,
+      locations: f.locations.includes(code)
+        ? f.locations.filter((c) => c !== code)
+        : [...f.locations, code],
+    }));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -109,23 +126,39 @@ function UserForm({ open, onOpenChange, mode, form, setForm, onSubmit, error, is
               required={mode === "create"}
             />
           </div>
-          <div className="space-y-2.5 pt-1">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={form.is_active} onCheckedChange={setChecked("is_active")} />
-              Active
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={form.is_staff} onCheckedChange={setChecked("is_staff")} />
-              Staff — can sign in to this admin
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={form.is_superuser}
-                onCheckedChange={setChecked("is_superuser")}
-              />
-              Superuser — full access, including managing other users
-            </label>
+          <div className="space-y-1.5">
+            <Label htmlFor="role">Role</Label>
+            <Select id="role" className="w-full" value={form.role} onChange={set("role")}>
+              {ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {ROLES.find((r) => r.value === form.role)?.description}
+            </p>
           </div>
+          {form.role === "fulfilment" && (
+            <div className="space-y-1.5">
+              <Label>Locations</Label>
+              <div className="space-y-1.5 rounded-lg border border-input p-2.5">
+                {locationOptions.map((loc) => (
+                  <label key={loc.code} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={form.locations.includes(loc.code)}
+                      onCheckedChange={() => toggleLocation(loc.code)}
+                    />
+                    {loc.name} <span className="font-mono text-xs text-muted-foreground">{loc.code}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <label className="flex items-center gap-2 pt-1 text-sm">
+            <Checkbox checked={form.is_active} onCheckedChange={setChecked("is_active")} />
+            Active
+          </label>
         </form>
         <SheetFooter>
           <Button type="submit" form="user-form" disabled={isSaving}>
@@ -141,6 +174,7 @@ export default function UsersList() {
   const { user: currentUser } = useAuth();
   const { showToast } = useToast();
   const { data, isFetching, error, refetch } = useGetUsersQuery();
+  const { data: locations } = useGetLocationsQuery();
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
@@ -168,8 +202,8 @@ export default function UsersList() {
       first_name: row.first_name || "",
       last_name: row.last_name || "",
       password: "",
-      is_staff: row.is_staff,
-      is_superuser: row.is_superuser,
+      role: row.role || "reporting",
+      locations: row.locations || [],
       is_active: row.is_active,
     });
     setFormError(null);
@@ -189,8 +223,8 @@ export default function UsersList() {
       email: form.email,
       first_name: form.first_name,
       last_name: form.last_name,
-      is_staff: form.is_staff,
-      is_superuser: form.is_superuser,
+      role: form.role,
+      locations: form.role === "fulfilment" ? form.locations : [],
       is_active: form.is_active,
     };
     if (form.password) payload.password = form.password;
@@ -231,14 +265,19 @@ export default function UsersList() {
     {
       key: "role",
       label: "Role",
+      render: (row) => (
+        <StatusBadge tone={ROLE_TONE[row.role] ?? "neutral"}>
+          {ROLES.find((r) => r.value === row.role)?.label ?? row.role}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: "locations",
+      label: "Locations",
       render: (row) =>
-        row.is_superuser ? (
-          <StatusBadge tone="success">Superuser</StatusBadge>
-        ) : row.is_staff ? (
-          <StatusBadge tone="info">Staff</StatusBadge>
-        ) : (
-          <StatusBadge tone="neutral">Standard</StatusBadge>
-        ),
+        row.role === "fulfilment"
+          ? (row.locations?.length ? row.locations.join(", ") : "None assigned")
+          : "All",
     },
     {
       key: "is_active",
@@ -248,12 +287,6 @@ export default function UsersList() {
           {row.is_active ? "Active" : "Disabled"}
         </StatusBadge>
       ),
-    },
-    {
-      key: "date_joined",
-      label: "Joined",
-      mono: true,
-      render: (row) => (row.date_joined ? new Date(row.date_joined).toLocaleString() : "—"),
     },
     {
       key: "actions",
@@ -283,7 +316,8 @@ export default function UsersList() {
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Staff accounts with sign-in access to CDC OMS.
+          Staff accounts with sign-in access to CDC OMS — Admin, Fulfilment (location-scoped), or
+          Reporting (read-only).
         </p>
         <Button size="sm" onClick={openCreate}>
           <Plus className="size-3.5" />
@@ -325,6 +359,7 @@ export default function UsersList() {
         onSubmit={handleSubmit}
         error={formError}
         isSaving={formMode === "edit" ? isUpdating : isCreating}
+        locationOptions={locations?.rows ?? []}
       />
 
       <AlertDialog

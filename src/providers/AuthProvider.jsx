@@ -1,12 +1,10 @@
 import { createContext, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
+import { omsApi } from "@/api/omsApiBase.js";
 import { authApi, useGetMeQuery, useLogoutMutation } from "@/api/services/auth.js";
 import { customersApi } from "@/api/services/customers.js";
 import { fulfillmentsApi } from "@/api/services/fulfillments.js";
-import { inventoryApi } from "@/api/services/inventory.js";
-import { ordersApi } from "@/api/services/orders.js";
-import { statsApi } from "@/api/services/stats.js";
 import { usersApi } from "@/api/services/users.js";
 import { logout as logoutAction, setUser } from "@/api/slices/authSlice.js";
 
@@ -51,11 +49,11 @@ export function AuthProvider({ children }) {
       dispatch(logoutAction());
       dispatch(authApi.util.resetApiState());
       dispatch(usersApi.util.resetApiState());
-      dispatch(ordersApi.util.resetApiState());
-      dispatch(inventoryApi.util.resetApiState());
+      // One reset covers orders/inventory/mappings/pending/channels/locations/
+      // activity/reports/stats/allocation — they all share the omsApi cache.
+      dispatch(omsApi.util.resetApiState());
       dispatch(fulfillmentsApi.util.resetApiState());
       dispatch(customersApi.util.resetApiState());
-      dispatch(statsApi.util.resetApiState());
     }
   };
 
