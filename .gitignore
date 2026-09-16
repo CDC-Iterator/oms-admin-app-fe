@@ -1,3 +1,5 @@
+.claude
+.shopify
 node_modules/
 dist/
 .env
