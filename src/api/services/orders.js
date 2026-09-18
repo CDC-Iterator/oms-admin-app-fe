@@ -13,7 +13,7 @@ export const ordersApi = omsApi.injectEndpoints({
       providesTags: ["orders"],
     }),
     // Cancel / return / RTO — each restocks the reserved unit back into the
-    // pool and rejoins the same ledger it left (see mockDb.reverseOrder).
+    // pool and rejoins the same ledger it left.
     reverseOrder: builder.mutation({
       query: ({ id, mode }) => ({ url: `/api/orders/${id}/reverse/`, method: "POST", body: { mode } }),
       invalidatesTags: ["orders", "inventory", "activity", "stats", "reports"],
