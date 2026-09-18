@@ -67,7 +67,7 @@ export function stockLevel(available) {
   return { tone: "success", label: "In stock" };
 }
 
-/** Reservation state on an OMS order (see mockDb.sellUnit/reverseOrder). */
+/** Reservation state on an OMS order. */
 export function reservationTone(status) {
   switch ((status || "").toLowerCase()) {
     case "reserved":
