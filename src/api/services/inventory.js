@@ -3,21 +3,29 @@ import { unwrapList } from "../unwrapList.js";
 
 export const inventoryApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
-    // The item-code pool: one honest available number per item, across every
-    // channel, with a per-location breakdown.
-    getInventoryPool: builder.query({
-      query: () => ({ url: "/api/inventory/pool/" }),
+    // One (sku, location) row per pair — GET /api/inventory/ledger/,
+    // optional ?sku=<item_code>/?location=<code>/?location_id=/?search=.
+    getInventoryLedger: builder.query({
+      query: (params) => ({ url: "/api/inventory/ledger/", params }),
       transformResponse: unwrapList,
       providesTags: ["inventory"],
     }),
-    // Expanding a pool row: the individual serials/barcodes under that item
-    // code — ownership, purchase price, location — the data allocation ranks.
-    getSerials: builder.query({
-      query: (itemCode) => ({ url: `/api/inventory/${itemCode}/serials/` }),
+    // Row count per location (same scoping/?search= as the list above) —
+    // backs the Inventory screen's dynamic per-location tabs.
+    getInventoryLocationSummary: builder.query({
+      query: (params) => ({ url: "/api/inventory/ledger/location-summary/", params }),
+      providesTags: ["inventory"],
+    }),
+    // Individual barcode-level rows — GET /api/inventory/units/?sku=
+    // (required in practice)/?location_id= (optional). Backs the Inventory
+    // screen's per-SKU "Units" drawer.
+    getInventoryUnits: builder.query({
+      query: (params) => ({ url: "/api/inventory/units/", params }),
       transformResponse: unwrapList,
       providesTags: ["inventory"],
     }),
   }),
 });
 
-export const { useGetInventoryPoolQuery, useGetSerialsQuery } = inventoryApi;
+export const { useGetInventoryLedgerQuery, useGetInventoryLocationSummaryQuery, useGetInventoryUnitsQuery } =
+  inventoryApi;

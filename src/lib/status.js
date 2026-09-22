@@ -1,59 +1,10 @@
 /**
- * Maps raw Shopify status strings (as stored verbatim by the webhook
- * handlers — see backend/shopify/handlers/webhook.py) to a display tone.
- * Never fabricates a label: unknown/blank values fall back to "neutral"
- * and the caller decides whether to render a chip or a plain dash.
+ * Maps a raw backend status string to a display tone. Never fabricates a
+ * label: unknown/blank values fall back to "neutral" and the caller decides
+ * whether to render a chip or a plain dash.
  */
 
-export function paymentTone(status) {
-  switch ((status || "").toLowerCase()) {
-    case "paid":
-      return "success";
-    case "authorized":
-    case "partially_paid":
-    case "pending":
-      return "pending";
-    case "partially_refunded":
-    case "refunded":
-      return "neutral";
-    case "voided":
-    case "expired":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-export function orderFulfillmentTone(status) {
-  switch ((status || "").toLowerCase()) {
-    case "fulfilled":
-      return "success";
-    case "partial":
-      return "pending";
-    case "restocked":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-export function fulfillmentRecordTone(status) {
-  switch ((status || "").toLowerCase()) {
-    case "success":
-      return "success";
-    case "pending":
-    case "open":
-      return "pending";
-    case "cancelled":
-    case "error":
-    case "failure":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-/** Inventory has no status field from Shopify — derive one from quantity. */
+/** InventoryLedger.available_qty has no status field — derive one from quantity. */
 export function stockLevel(available) {
   if (available === null || available === undefined) {
     return { tone: "neutral", label: "Unknown" };
@@ -67,14 +18,22 @@ export function stockLevel(available) {
   return { tone: "success", label: "In stock" };
 }
 
-/** Reservation state on an OMS order. */
+// A suggestion is a non-binding candidate — once an order is cancelled/RTO'd
+// (its reserved unit already released back to the ledger) or completed (the
+// line item either has a confirmed unit or it doesn't), a leftover
+// suggestion is no longer meaningful to show.
+export const SUGGESTION_HIDDEN_STATUSES = new Set(["cancelled", "rto", "completed"]);
+
+/** Order.status — apps.orders.models. */
 export function reservationTone(status) {
   switch ((status || "").toLowerCase()) {
-    case "reserved":
+    case "confirmed":
+    case "completed":
       return "success";
     case "cancelled":
+    case "rto":
       return "danger";
-    case "restocked":
+    case "returned":
       return "neutral";
     case "pending":
       return "pending";
@@ -83,35 +42,16 @@ export function reservationTone(status) {
   }
 }
 
-/** Channel connection health (Channels screen, order/mapping channel chips). */
-export function channelTone(status) {
-  switch ((status || "").toLowerCase()) {
-    case "connected":
-      return "success";
-    case "degraded":
-      return "pending";
-    case "disconnected":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-/** Sync/activity log entry outcome. */
+/** SyncLog.status — apps.inventory.models. */
 export function syncTone(status) {
   switch ((status || "").toLowerCase()) {
-    case "ok":
+    case "success":
       return "success";
-    case "retry":
+    case "retrying":
       return "pending";
     case "failed":
       return "danger";
     default:
       return "neutral";
   }
-}
-
-/** SKU/ID mapping coverage — used on the Channels + Mappings screens. */
-export function mappingTone(mapped) {
-  return mapped ? "success" : "pending";
 }

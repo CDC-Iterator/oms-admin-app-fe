@@ -1,109 +1,299 @@
-import { useState } from "react";
-import { Receipt } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Fragment, useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, Receipt } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 
-import DataTable from "../components/DataTable.jsx";
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
-import { ListEyebrow } from "../components/list-eyebrow.jsx";
+import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
+import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
 import { Select } from "@/components/ui/select.jsx";
-import { useGetOrdersQuery } from "../api/services/orders.js";
+import { Skeleton } from "@/components/ui/skeleton.jsx";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
+import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
 import { formatApiError } from "../lib/errors.js";
-import { reservationTone } from "../lib/status.js";
+import { reservationTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
+const PAGE_SIZE = 50;
+
+// Order.channel choices — apps.channels.models.
 const CHANNELS = [
   { value: "", label: "All channels" },
   { value: "shopify", label: "Shopify" },
+  { value: "tatacliq", label: "TataCliq" },
+  { value: "pos", label: "POS" },
 ];
 
-const STATUSES = [
-  { value: "", label: "All statuses" },
-  { value: "reserved", label: "Reserved" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "restocked", label: "Restocked" },
-];
+const COLUMN_COUNT = 9;
 
-const COLUMNS = [
-  {
-    key: "orderNumber",
-    label: "Order",
-    mono: true,
-    render: (row) => (
-      <Link to={`/orders/${row.id}`} className="text-primary hover:underline">
-        {row.orderNumber}
-      </Link>
-    ),
-  },
-  { key: "channel", label: "Channel", render: (row) => <ChannelBadge channel={row.channel} /> },
-  { key: "title", label: "Item" },
-  { key: "customerName", label: "Customer" },
-  {
-    key: "unitPrice",
-    label: "Total",
-    mono: true,
-    render: (row) => `${row.unitPrice?.toLocaleString("en-IN")} ${row.currency || ""}`.trim(),
-  },
-  {
-    key: "reservationStatus",
-    label: "Reservation",
-    render: (row) => (
-      <StatusBadge tone={reservationTone(row.reservationStatus)}>{row.reservationStatus}</StatusBadge>
-    ),
-  },
-  {
-    key: "placedAt",
-    label: "Placed",
-    mono: true,
-    render: (row) => (row.placedAt ? new Date(row.placedAt).toLocaleString() : "—"),
-  },
-];
+function useDebounced(value, delayMs) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+// Expanded row's content — lazily fetches the order detail (line items
+// aren't on the list response, apps.orders.serializers.OrderListSerializer's
+// own docstring explains why) only once a row is actually opened.
+function LineItemsRow({ orderId }) {
+  const { data: order, isFetching, error } = useGetOrderQuery(orderId);
+  const lineItems = order?.line_items ?? [];
+  const showSuggested = !SUGGESTION_HIDDEN_STATUSES.has(order?.status);
+
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableCell colSpan={COLUMN_COUNT} className="bg-muted/20 py-3">
+        {error ? (
+          <p className="text-xs text-destructive">{formatApiError(error)}</p>
+        ) : isFetching ? (
+          <Skeleton className="h-16 w-full" />
+        ) : lineItems.length === 0 ? (
+          <p className="pl-8 text-xs text-muted-foreground">No line items on this order.</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg ring-1 ring-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 text-[0.65rem]">SKU</TableHead>
+                  <TableHead className="h-8 text-center text-[0.65rem]">Qty</TableHead>
+                  <TableHead className="h-8 text-center text-[0.65rem]">Price</TableHead>
+                  <TableHead className="h-8 text-[0.65rem]">Unit</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lineItems.map((li) => (
+                  <TableRow key={li.id}>
+                    <TableCell className="font-mono text-xs">{li.external_sku}</TableCell>
+                    <TableCell className="text-center font-mono text-xs tabular-nums">{li.qty}</TableCell>
+                    <TableCell className="text-center font-mono text-xs tabular-nums">
+                      {Number(li.price ?? 0).toLocaleString("en-IN")}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {li.inventory_unit ?? (showSuggested ? li.suggested_inventory_unit : null) ?? "—"}
+                      {!li.inventory_unit && showSuggested && li.suggested_inventory_unit && (
+                        <StatusBadge tone="pending" className="ml-1.5">
+                          Suggested
+                        </StatusBadge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
 
 export default function OrdersList() {
   const [channel, setChannel] = useState("");
-  const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 300);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+
+  // Page and status tab both live in the URL (?page=/?status=), not
+  // component state — a refresh (or a shared/bookmarked link) lands back
+  // on the same page AND tab instead of resetting either.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Number(searchParams.get("page")) || 1;
+  const status = searchParams.get("status") || "";
+
+  const updateParams = (updates) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === null || value === undefined || value === "") {
+            next.delete(key);
+          } else {
+            next.set(key, String(value));
+          }
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  };
+  const setPage = (nextPage) => updateParams({ page: nextPage <= 1 ? null : nextPage });
+
+  // Page resets to 1 from these handlers directly, not a useEffect keyed on
+  // [status, channel, debouncedSearch] — that also fires on mount (and
+  // React.StrictMode's dev-only double-invoke defeats any ref-based "skip
+  // the first run" guard), clobbering ?page=/?status= from a
+  // refreshed/shared URL.
+  const handleStatusChange = (nextStatus) => updateParams({ status: nextStatus, page: null });
+  const handleChannelChange = (value) => {
+    setChannel(value);
+    setPage(1);
+  };
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const toggleExpanded = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const searchParam = debouncedSearch || undefined;
+  const channelParam = channel || undefined;
   const { data, isFetching, error, refetch } = useGetOrdersQuery({
-    channel: channel || undefined,
+    page,
     status: status || undefined,
+    channel: channelParam,
+    search: searchParam,
   });
+  const { data: statusSummary } = useGetOrderStatusSummaryQuery({ channel: channelParam, search: searchParam });
+  const rows = data?.rows ?? [];
+  const totalCount = (statusSummary ?? []).reduce((sum, s) => sum + s.count, 0);
 
   return (
-    <div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Every order from every channel lands here the moment it's placed, reserved against POS 2.0
-        — no manual sync.
+    <div className="flex h-full min-h-0 flex-col">
+      <p className="mb-4 shrink-0 text-sm text-muted-foreground">
+        Every order from every channel, reconciled against one inventory ledger.
       </p>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Select value={channel} onChange={(e) => setChannel(e.target.value)}>
+
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
+        <Input
+          placeholder="Search order, customer, city…"
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="flex-1"
+        />
+        <Select value={channel} onChange={(e) => handleChannelChange(e.target.value)}>
           {CHANNELS.map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
             </option>
           ))}
         </Select>
-        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-          {STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </Select>
       </div>
-      <ListEyebrow count={data?.count ?? 0} noun="orders" />
-      <DataTable
-        columns={COLUMNS}
-        rows={data?.rows ?? []}
-        loading={isFetching}
-        error={formatApiError(error)}
-        onRetry={refetch}
-        empty={
-          <EmptyState
-            icon={Receipt}
-            title="No orders yet"
-            description="New orders will show up here the moment a customer checks out on any channel."
-          />
-        }
-      />
+
+      <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
+        <button
+          onClick={() => handleStatusChange("")}
+          className={
+            "rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
+            (status === ""
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground")
+          }
+        >
+          All {statusSummary ? `(${totalCount})` : ""}
+        </button>
+        {(statusSummary ?? []).map((s) => (
+          <button
+            key={s.status}
+            onClick={() => handleStatusChange(s.status)}
+            className={
+              "rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
+              (status === s.status
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground")
+            }
+          >
+            {s.label} ({s.count})
+          </button>
+        ))}
+      </div>
+
+      {error ? (
+        <EmptyState
+          tone="danger"
+          title="Couldn't load orders"
+          description={`${formatApiError(error)} — try again.`}
+          action={
+            <Button size="sm" variant="outline" onClick={refetch}>
+              Try again
+            </Button>
+          }
+        />
+      ) : isFetching && !data ? (
+        <Skeleton className="h-64 w-full" />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          icon={Receipt}
+          title="No orders found"
+          description="New orders will show up here the moment a customer checks out on any channel."
+        />
+      ) : (
+        // See InventoryList.jsx's own comment for why overflow-hidden lands
+        // here and min-h-0/flex-1 on the nested [data-slot=table-container].
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-8 border-b-2 border-border" />
+                <TableHead className="border-b-2 border-border">Order</TableHead>
+                <TableHead className="border-b-2 border-border">Channel</TableHead>
+                <TableHead className="border-b-2 border-border">Customer</TableHead>
+                <TableHead className="border-b-2 border-border">City</TableHead>
+                <TableHead className="border-b-2 border-border text-center">Total</TableHead>
+                <TableHead className="border-b-2 border-border text-center">Status</TableHead>
+                <TableHead className="border-b-2 border-border">Location</TableHead>
+                <TableHead className="border-b-2 border-border">Placed</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => {
+                const isExpanded = expandedIds.has(row.id);
+                return (
+                  <Fragment key={row.id}>
+                    <TableRow>
+                      <TableCell>
+                        <Button variant="ghost" size="icon-sm" onClick={() => toggleExpanded(row.id)}>
+                          {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                          <span className="sr-only">{isExpanded ? "Hide line items" : "Show line items"}</span>
+                        </Button>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <Link to={`/orders/${row.id}`} className="text-primary hover:underline">
+                          {row.external_order_id}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <ChannelBadge channel={row.channel} />
+                      </TableCell>
+                      <TableCell className="text-sm">{row.customer_name || "—"}</TableCell>
+                      <TableCell className="text-sm">{row.shipping_city || "—"}</TableCell>
+                      <TableCell className="text-center font-mono text-xs tabular-nums">
+                        {Number(row.total_amount ?? 0).toLocaleString("en-IN")}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <StatusBadge tone={reservationTone(row.status)}>{row.status}</StatusBadge>
+                      </TableCell>
+                      <TableCell className="text-sm">{row.allocated_location || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && <LineItemsRow orderId={row.id} />}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <div className="shrink-0">
+        <Pagination page={page} pageSize={PAGE_SIZE} count={data?.count ?? 0} onPageChange={setPage} />
+      </div>
     </div>
   );
 }

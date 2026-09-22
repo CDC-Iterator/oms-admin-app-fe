@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   Activity,
-  AlertCircle,
   BarChart3,
   Boxes,
   LayoutDashboard,
@@ -10,10 +9,9 @@ import {
   PackageSearch,
   Radio,
   Receipt,
-  SlidersHorizontal,
-  Truck,
+  Tags,
+  UserCircle,
   UserCog,
-  Users,
   Warehouse,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -33,28 +31,30 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth.js";
 
-// Our real routes — one flat group, replacing the sidebar-01 block's
-// Next.js-docs sample data (Getting Started / Build Your Application / ...).
 const NAV_ITEMS = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Orders", url: "/orders", icon: Receipt },
-  { title: "Pending", url: "/pending", icon: AlertCircle },
-  { title: "Inventory", url: "/inventory", icon: Boxes },
-  { title: "Mappings", url: "/mappings", icon: Link2 },
-  { title: "Channels", url: "/channels", icon: Radio },
-  { title: "Locations", url: "/locations", icon: Warehouse },
-  { title: "Activity", url: "/activity", icon: Activity },
   { title: "Reports", url: "/reports", icon: BarChart3 },
-  { title: "Fulfillments", url: "/fulfillments", icon: Truck },
-  { title: "Customers", url: "/customers", icon: Users },
 ];
 
-// Admin-only: hide these links from Fulfilment/Reporting accounts rather than
-// send them to a screen their role has no business writing to.
-const ADMIN_NAV_ITEMS = [
-  { title: "Users", url: "/users", icon: UserCog },
-  { title: "Allocation Rules", url: "/allocation", icon: SlidersHorizontal, scope: true },
+const CATALOG_ITEMS = [
+  { title: "Products", url: "/catalog/products", icon: Tags },
+  { title: "Inventory", url: "/catalog/inventory", icon: Boxes },
+  { title: "Unmapped SKUs", url: "/catalog/unmapped", icon: Link2 },
 ];
+
+const SETTINGS_ITEMS = [
+  { title: "Locations", url: "/settings/locations", icon: Warehouse },
+  { title: "Channels", url: "/settings/channels", icon: Radio },
+  { title: "Activity Log", url: "/settings/activity", icon: Activity },
+];
+const PROFILE_ITEMS = [{ title: "Profile", url: "/settings/profile", icon: UserCircle }];
+
+// Shown to real superusers and business admins — the backend's own
+// IsSuperAdmin gate on /api/users/ still applies, so a role="admin" user
+// who isn't a Django superuser sees the item but gets a 403 on the API.
+// Ordered above Profile, so it sits with the rest of Settings.
+const USER_MANAGEMENT_ITEMS = [{ title: "Users", url: "/settings/users", icon: UserCog }];
 
 function NavItems({ items, pathname }) {
   return items.map((item) => {
@@ -65,11 +65,6 @@ function NavItems({ items, pathname }) {
         <SidebarMenuButton isActive={isActive} render={<NavLink to={item.url} />} tooltip={item.title}>
           <Icon className="size-4" strokeWidth={2} />
           <span className="flex-1">{item.title}</span>
-          {item.scope && (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">
-              Scope
-            </span>
-          )}
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -95,23 +90,32 @@ export function AppSidebar({ ...props }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItems items={NAV_ITEMS} pathname={location.pathname} />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {user?.role === "admin" && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <NavItems items={ADMIN_NAV_ITEMS} pathname={location.pathname} />
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarGroup>
+          <SidebarGroupLabel>Catalog</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <NavItems items={CATALOG_ITEMS} pathname={location.pathname} />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <NavItems items={SETTINGS_ITEMS} pathname={location.pathname} />
+              {(user?.is_superuser || user?.role === "admin") && (
+                <NavItems items={USER_MANAGEMENT_ITEMS} pathname={location.pathname} />
+              )}
+              <NavItems items={PROFILE_ITEMS} pathname={location.pathname} />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

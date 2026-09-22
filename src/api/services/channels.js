@@ -1,21 +1,14 @@
 import { omsApi } from "../omsApiBase.js";
-import { unwrapList } from "../unwrapList.js";
 
+// No list/disconnect API exists on the backend (single-store Shopify only,
+// StoreChannel has no DRF viewset) — this is just the real 2-step OAuth
+// install ticket flow (apps.channels.oauth_views), admin-only.
 export const channelsApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
-    getChannels: builder.query({
-      query: () => ({ url: "/api/channels/" }),
-      transformResponse: unwrapList,
-      providesTags: ["channels"],
-    }),
-    // Single-store: disconnect resets the channel + merchant install state so
-    // Connect (a plain redirect into Shopify OAuth, not an API call — see
-    // ChannelsList.jsx) starts the exact same flow again from scratch.
-    disconnectChannel: builder.mutation({
-      query: (id) => ({ url: `/api/channels/${id}/disconnect/`, method: "POST" }),
-      invalidatesTags: ["channels"],
+    prepareShopifyInstall: builder.mutation({
+      query: (shop) => ({ url: "/api/channels/shopify/install/", method: "POST", body: { shop } }),
     }),
   }),
 });
 
-export const { useGetChannelsQuery, useDisconnectChannelMutation } = channelsApi;
+export const { usePrepareShopifyInstallMutation } = channelsApi;

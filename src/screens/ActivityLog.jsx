@@ -11,40 +11,59 @@ import { useGetActivityQuery } from "../api/services/activity.js";
 import { formatApiError } from "../lib/errors.js";
 import { syncTone } from "../lib/status.js";
 
-const KINDS = [
-  { value: "", label: "All events" },
-  { value: "reservation", label: "Reservation" },
-  { value: "availability_push", label: "Availability push" },
-  { value: "order_fetch", label: "Order fetch" },
-  { value: "restock", label: "Restock" },
-  { value: "mapping", label: "Mapping" },
-  { value: "mismatch", label: "Mismatch" },
+// SyncLog.Direction/Status choices — apps.inventory.models.
+const DIRECTIONS = [
+  { value: "", label: "All directions" },
+  { value: "push", label: "Push" },
+  { value: "pull", label: "Pull" },
+];
+
+const STATUSES = [
+  { value: "", label: "All statuses" },
+  { value: "success", label: "Success" },
+  { value: "retrying", label: "Retrying" },
+  { value: "failed", label: "Failed" },
 ];
 
 const COLUMNS = [
-  { key: "channel", label: "Channel", render: (row) => <ChannelBadge channel={row.channel} /> },
-  { key: "kind", label: "Event", render: (row) => row.kind.replace("_", " ") },
-  { key: "itemCode", label: "Item code", mono: true },
-  { key: "message", label: "Message" },
+  { key: "channel", label: "Channel", render: (row) => (row.channel ? <ChannelBadge channel={row.channel} /> : "—") },
+  { key: "direction", label: "Direction" },
+  { key: "topic", label: "Topic", mono: true },
   { key: "status", label: "Status", render: (row) => <StatusBadge tone={syncTone(row.status)}>{row.status}</StatusBadge> },
-  { key: "ts", label: "When", mono: true, render: (row) => new Date(row.ts).toLocaleString() },
+  { key: "error", label: "Error", render: (row) => row.error || "—" },
+  {
+    key: "timestamp",
+    label: "When",
+    mono: true,
+    render: (row) => new Date(row.timestamp).toLocaleString(),
+  },
 ];
 
 export default function ActivityLog() {
-  const [kind, setKind] = useState("");
-  const { data, isFetching, error, refetch } = useGetActivityQuery({ kind: kind || undefined });
+  const [direction, setDirection] = useState("");
+  const [status, setStatus] = useState("");
+  const { data, isFetching, error, refetch } = useGetActivityQuery({
+    direction: direction || undefined,
+    status: status || undefined,
+  });
 
   return (
     <div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Every inventory push and order fetch, timestamped and channel-tagged — this is the real
-        thing, not a demo mock of a log.
+        Every POS/channel sync attempt — inbound reads and outbound pushes, with outcome.
       </p>
-      <div className="mb-3">
-        <Select value={kind} onChange={(e) => setKind(e.target.value)}>
-          {KINDS.map((k) => (
-            <option key={k.value} value={k.value}>
-              {k.label}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Select value={direction} onChange={(e) => setDirection(e.target.value)}>
+          {DIRECTIONS.map((d) => (
+            <option key={d.value} value={d.value}>
+              {d.label}
+            </option>
+          ))}
+        </Select>
+        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+          {STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </Select>
@@ -60,7 +79,7 @@ export default function ActivityLog() {
           <EmptyState
             icon={Activity}
             title="No activity yet"
-            description="Every sync push and order fetch will show up here as it happens."
+            description="Every sync push and fetch will show up here as it happens."
           />
         }
       />

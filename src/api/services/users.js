@@ -1,22 +1,14 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
-
-import baseQuery from "../baseQuery.js";
+import { omsApi } from "../omsApiBase.js";
 import { unwrapList } from "../unwrapList.js";
 
-export const USERS_API_REDUCER_KEY = "usersApi";
-
-export const usersApi = createApi({
-  reducerPath: USERS_API_REDUCER_KEY,
-  baseQuery,
-  tagTypes: ["users"],
+// /api/users/ — superuser-only (common.permissions.IsSuperAdmin). No
+// destroy action on the backend; deactivate via is_active instead.
+export const usersApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
+    // ?search= matches email/first_name/last_name — see UserViewSet.get_queryset.
     getUsers: builder.query({
       query: (params) => ({ url: "/api/users/", params }),
       transformResponse: unwrapList,
-      providesTags: ["users"],
-    }),
-    getUser: builder.query({
-      query: (id) => ({ url: `/api/users/${id}/` }),
       providesTags: ["users"],
     }),
     createUser: builder.mutation({
@@ -27,17 +19,7 @@ export const usersApi = createApi({
       query: ({ id, ...body }) => ({ url: `/api/users/${id}/`, method: "PATCH", body }),
       invalidatesTags: ["users"],
     }),
-    deleteUser: builder.mutation({
-      query: (id) => ({ url: `/api/users/${id}/`, method: "DELETE" }),
-      invalidatesTags: ["users"],
-    }),
   }),
 });
 
-export const {
-  useGetUsersQuery,
-  useGetUserQuery,
-  useCreateUserMutation,
-  useUpdateUserMutation,
-  useDeleteUserMutation,
-} = usersApi;
+export const { useGetUsersQuery, useCreateUserMutation, useUpdateUserMutation } = usersApi;
