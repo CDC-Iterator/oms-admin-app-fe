@@ -25,9 +25,7 @@ export default function Login() {
     setError(null);
     try {
       const result = await login({ username, password }).unwrap();
-      dispatch(
-        setCredentials({ access: result.access, refresh: result.refresh, user: result.user })
-      );
+      dispatch(setCredentials({ access: result.access, user: result.user }));
       navigate("/", { replace: true });
     } catch (err) {
       setError(formatApiError(err) || "Invalid username or password.");

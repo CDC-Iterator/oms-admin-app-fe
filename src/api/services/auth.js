@@ -13,14 +13,18 @@ export const authApi = createApi({
       query: (body) => ({ url: "/api/auth/login/", method: "POST", body }),
     }),
     refresh: builder.mutation({
-      query: (body) => ({ url: "/api/auth/refresh/", method: "POST", body }),
+      // No body — the refresh token rides the httpOnly cookie automatically.
+      query: () => ({ url: "/api/auth/refresh/", method: "POST" }),
     }),
     logout: builder.mutation({
-      query: (body) => ({ url: "/api/auth/logout/", method: "POST", body }),
+      query: () => ({ url: "/api/auth/logout/", method: "POST" }),
     }),
     getMe: builder.query({
       query: () => ({ url: "/api/auth/me/" }),
       providesTags: ["auth"],
+    }),
+    changePassword: builder.mutation({
+      query: (body) => ({ url: "/api/auth/change-password/", method: "POST", body }),
     }),
   }),
 });
@@ -30,4 +34,5 @@ export const {
   useRefreshMutation,
   useLogoutMutation,
   useGetMeQuery,
+  useChangePasswordMutation,
 } = authApi;

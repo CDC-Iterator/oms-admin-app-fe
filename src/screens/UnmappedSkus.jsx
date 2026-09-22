@@ -17,33 +17,33 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet.jsx";
-import { useGetInventoryPoolQuery } from "../api/services/inventory.js";
-import { useGetPendingQuery, useMapPendingMutation } from "../api/services/pending.js";
+import { useGetProductsQuery } from "../api/services/catalog.js";
+import { useGetUnmappedQuery, useMapUnmappedMutation } from "../api/services/unmapped.js";
 import { formatApiError } from "../lib/errors.js";
 import { useToast } from "../hooks/useToast.js";
 
-export default function PendingOrders() {
+export default function UnmappedSkus() {
   const { showToast } = useToast();
-  const { data, isFetching, error, refetch } = useGetPendingQuery();
-  const { data: pool } = useGetInventoryPoolQuery();
-  const [mapPending, { isLoading: isMapping }] = useMapPendingMutation();
+  const { data, isFetching, error, refetch } = useGetUnmappedQuery();
+  const { data: products } = useGetProductsQuery({ active: true });
+  const [mapUnmapped, { isLoading: isMapping }] = useMapUnmappedMutation();
 
   const [target, setTarget] = useState(null);
-  const [itemCode, setItemCode] = useState("");
+  const [skuId, setSkuId] = useState("");
   const [mapError, setMapError] = useState(null);
 
   const openMap = (row) => {
     setMapError(null);
     setTarget(row);
-    setItemCode(row.suggestedItemCode || "");
+    setSkuId("");
   };
 
   const handleMap = async (event) => {
     event.preventDefault();
     setMapError(null);
     try {
-      await mapPending({ id: target.id, itemCode }).unwrap();
-      showToast(`${target.channelSku} mapped to ${itemCode} — order rejoined the flow.`);
+      await mapUnmapped({ id: target.id, sku: Number(skuId) }).unwrap();
+      showToast(`${target.external_sku} mapped — every order line blocked on it re-suggests a unit.`);
       setTarget(null);
     } catch (err) {
       setMapError(formatApiError(err));
@@ -52,15 +52,8 @@ export default function PendingOrders() {
 
   const COLUMNS = [
     { key: "channel", label: "Channel", render: (row) => <ChannelBadge channel={row.channel} /> },
-    { key: "channelSku", label: "Channel SKU", mono: true },
-    { key: "title", label: "Item (from catalogue)" },
-    { key: "customerName", label: "Customer" },
-    {
-      key: "placedAt",
-      label: "Placed",
-      mono: true,
-      render: (row) => new Date(row.placedAt).toLocaleString(),
-    },
+    { key: "external_sku", label: "External SKU", mono: true },
+    { key: "external_variant_id", label: "External variant ID", mono: true },
     {
       key: "actions",
       label: "",
@@ -76,10 +69,10 @@ export default function PendingOrders() {
   return (
     <div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Orders carrying a channel SKU with no POS 2.0 item code held here — nothing is lost, it just
-        waits for a mapping. Once mapped, the order rejoins the normal flow automatically.
+        Channel SKUs with no matching POS 2.0 item code — every blocked order line re-suggests a
+        unit the moment this is mapped.
       </p>
-      <ListEyebrow count={data?.count ?? 0} noun="pending" label="Blocked on a mapping" live />
+      <ListEyebrow count={data?.count ?? 0} noun="unmapped" live />
       <DataTable
         columns={COLUMNS}
         rows={data?.rows ?? []}
@@ -89,8 +82,8 @@ export default function PendingOrders() {
         empty={
           <EmptyState
             icon={CheckCircle2}
-            title="Nothing blocked — every SKU is mapped"
-            description="Orders with an unrecognized channel SKU will show up here instead of getting lost."
+            title="Nothing unmapped — every SKU resolves"
+            description="A channel SKU with no matching item code will show up here instead of getting lost."
           />
         }
       />
@@ -98,11 +91,8 @@ export default function PendingOrders() {
       <Sheet open={Boolean(target)} onOpenChange={(open) => !open && setTarget(null)}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Map {target?.channelSku}</SheetTitle>
-            <SheetDescription>
-              Link this channel SKU to a POS 2.0 item code. We've suggested the closest catalogue
-              match — confirm or pick a different one.
-            </SheetDescription>
+            <SheetTitle>Map {target?.external_sku}</SheetTitle>
+            <SheetDescription>Link this channel SKU to a POS 2.0 item code.</SheetDescription>
           </SheetHeader>
           <form id="map-form" className="flex flex-1 flex-col gap-4 px-4" onSubmit={handleMap}>
             {mapError && (
@@ -111,28 +101,21 @@ export default function PendingOrders() {
               </Alert>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="channel-sku">Channel SKU</Label>
-              <p id="channel-sku" className="font-mono text-sm">
-                {target?.channelSku}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="item-code">POS 2.0 item code</Label>
-              <Select id="item-code" className="w-full" value={itemCode} onChange={(e) => setItemCode(e.target.value)}>
+              <Label htmlFor="item-code">Item code</Label>
+              <Select id="item-code" className="w-full" value={skuId} onChange={(e) => setSkuId(e.target.value)}>
                 <option value="" disabled>
                   Select an item code
                 </option>
-                {(pool?.rows ?? []).map((item) => (
-                  <option key={item.itemCode} value={item.itemCode}>
-                    {item.itemCode} — {item.title}
-                    {item.itemCode === target?.suggestedItemCode ? " (suggested)" : ""}
+                {(products?.rows ?? []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.item_code} — {p.title}
                   </option>
                 ))}
               </Select>
             </div>
           </form>
           <SheetFooter>
-            <Button type="submit" form="map-form" disabled={isMapping || !itemCode}>
+            <Button type="submit" form="map-form" disabled={isMapping || !skuId}>
               {isMapping ? "Mapping…" : "Map & rejoin flow"}
             </Button>
           </SheetFooter>

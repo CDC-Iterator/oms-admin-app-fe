@@ -9,17 +9,15 @@ import { useAuth } from "@/hooks/useAuth.js";
 const PAGE_TITLES = {
   "/": "Dashboard",
   "/orders": "Orders",
-  "/pending": "Pending Orders",
-  "/inventory": "Inventory",
-  "/mappings": "SKU / ID Mappings",
-  "/channels": "Channels",
-  "/locations": "Locations",
-  "/activity": "Activity Log",
   "/reports": "Reports",
-  "/fulfillments": "Fulfillments",
-  "/customers": "Customers",
-  "/users": "Users",
-  "/allocation": "Allocation Rules",
+  "/catalog/products": "Products",
+  "/catalog/inventory": "Inventory",
+  "/catalog/unmapped": "Unmapped SKUs",
+  "/settings/locations": "Locations",
+  "/settings/channels": "Channels",
+  "/settings/activity": "Activity Log",
+  "/settings/profile": "Profile",
+  "/settings/users": "Users",
 };
 
 function PageTitle() {

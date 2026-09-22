@@ -13,18 +13,18 @@ function loadStoredAuth() {
 
 const stored = loadStoredAuth();
 
+// The refresh token lives only in an httpOnly cookie (never in JS/localStorage)
+// — see api/axiosBaseQuery.js for the silent-refresh-on-401 flow that uses it.
 const authSlice = createSlice({
   name: "auth",
   initialState: {
     accessToken: stored?.accessToken ?? null,
-    refreshToken: stored?.refreshToken ?? null,
     user: stored?.user ?? null,
   },
   reducers: {
     setCredentials: (state, action) => {
-      const { access, refresh, user } = action.payload;
+      const { access, user } = action.payload;
       state.accessToken = access;
-      if (refresh) state.refreshToken = refresh;
       if (user) state.user = user;
     },
     setUser: (state, action) => {
@@ -32,7 +32,6 @@ const authSlice = createSlice({
     },
     logout: (state) => {
       state.accessToken = null;
-      state.refreshToken = null;
       state.user = null;
     },
   },

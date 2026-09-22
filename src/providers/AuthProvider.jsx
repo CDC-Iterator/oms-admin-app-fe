@@ -3,24 +3,20 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { omsApi } from "@/api/omsApiBase.js";
 import { authApi, useGetMeQuery, useLogoutMutation } from "@/api/services/auth.js";
-import { customersApi } from "@/api/services/customers.js";
-import { fulfillmentsApi } from "@/api/services/fulfillments.js";
-import { usersApi } from "@/api/services/users.js";
 import { logout as logoutAction, setUser } from "@/api/slices/authSlice.js";
 
 export const AuthContext = createContext(undefined);
 
 /**
  * Tracks the staff session and exposes { isAuthenticated, user, handleLogout }
- * to ProtectedLayout/PublicLayout/AppSidebar. Unlike the reference app there
- * is no refresh-cookie to silently exchange on mount — a stored access token
- * (see authSlice/store.js) either still works or the /me check below fails
- * and the session is dropped.
+ * to ProtectedLayout/PublicLayout/AppSidebar. A stored access token (see
+ * authSlice/store.js) either still works, or the /me check below 401s and
+ * axiosBaseQuery silently refreshes it from the httpOnly cookie — only a
+ * fully expired refresh cookie actually drops the session.
  */
 export function AuthProvider({ children }) {
   const dispatch = useDispatch();
   const accessToken = useSelector((state) => state.auth.accessToken);
-  const refreshToken = useSelector((state) => state.auth.refreshToken);
   const user = useSelector((state) => state.auth.user);
   const [logoutMutation] = useLogoutMutation();
 
@@ -40,20 +36,15 @@ export function AuthProvider({ children }) {
 
   const handleLogout = async () => {
     try {
-      if (refreshToken) {
-        await logoutMutation({ refresh: refreshToken }).unwrap();
-      }
+      await logoutMutation().unwrap();
     } catch {
       // Already invalid/expired — fine, we're clearing local state anyway.
     } finally {
       dispatch(logoutAction());
       dispatch(authApi.util.resetApiState());
-      dispatch(usersApi.util.resetApiState());
-      // One reset covers orders/inventory/mappings/pending/channels/locations/
-      // activity/reports/stats/allocation — they all share the omsApi cache.
+      // Covers orders/inventory/catalog/unmapped/channels/locations/activity/
+      // reports/allocation — they all share the omsApi cache.
       dispatch(omsApi.util.resetApiState());
-      dispatch(fulfillmentsApi.util.resetApiState());
-      dispatch(customersApi.util.resetApiState());
     }
   };
 

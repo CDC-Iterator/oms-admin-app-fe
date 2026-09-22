@@ -1,12 +1,13 @@
 import { omsApi } from "../omsApiBase.js";
 import { unwrapList } from "../unwrapList.js";
 
+// Closest real equivalent to an "activity feed": every inbound/outbound POS
+// and channel sync attempt, GET /api/inventory/sync-log/ — optional
+// ?direction=/?status=/?channel=/?topic=.
 export const activityApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
-    // Every inventory push and order fetch, timestamped and channel-tagged —
-    // "the activity log in the demo is the real thing."
     getActivity: builder.query({
-      query: (params) => ({ url: "/api/activity/", params }),
+      query: (params) => ({ url: "/api/inventory/sync-log/", params }),
       transformResponse: unwrapList,
       providesTags: ["activity"],
     }),
