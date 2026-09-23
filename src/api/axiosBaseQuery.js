@@ -10,10 +10,18 @@ let refreshPromise = null;
 // "stored token expired" case on a page reload) never reaches refresh.
 const NO_REFRESH_RETRY_URLS = ["/api/auth/login/", "/api/auth/refresh/"];
 
+// The only three endpoints that ever touch the httpOnly refresh cookie —
+// login sets it, refresh reads it, logout reads it (to blacklist) and
+// clears it. Every other call is stateless: Authorization header only, no
+// cookie. (login/logout need withCredentials too, not just refresh — a
+// cross-origin response's Set-Cookie is silently dropped by the browser
+// unless the request that triggered it was itself sent with credentials.)
+const CREDENTIALED_URLS = ["/api/auth/login/", "/api/auth/refresh/", "/api/auth/logout/"];
+
 function refreshAccessToken(dispatch) {
   if (!refreshPromise) {
     refreshPromise = client
-      .post("/api/auth/refresh/")
+      .post("/api/auth/refresh/", undefined, { withCredentials: true })
       .then((res) => {
         dispatch(setCredentials({ access: res.data.access }));
         return res.data.access;
@@ -37,8 +45,8 @@ function refreshAccessToken(dispatch) {
 
 /**
  * RTK Query base query backed by the shared axios instance (see client.js —
- * baseURL, ngrok header, credentials). Injects the staff JWT access token
- * from the auth slice on every request, and on a 401 (access token expired)
+ * baseURL, ngrok header). Injects the staff JWT access token from the auth
+ * slice on every request, and on a 401 (access token expired)
  * transparently refreshes once via the httpOnly cookie and retries — unless
  * the failing call is login/refresh itself, to avoid looping (NOT every
  * /api/auth/ call — /api/auth/me/'s own 401 must still trigger a refresh,
@@ -56,6 +64,7 @@ const axiosBaseQuery =
         method,
         data: body,
         params,
+        withCredentials: CREDENTIALED_URLS.includes(url),
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...requestOpts.headers,
