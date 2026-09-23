@@ -252,7 +252,9 @@ function ConnectionCard({ connection, canManage, onDisconnect, children }) {
 
 export default function ChannelsList() {
   const { user } = useAuth();
-  const canManage = user?.role === "admin";
+  // Matches the backend's IsSuperAdmin gate on /api/channels/connections/
+  // (superuser or role="admin") — the whole screen, not just writes.
+  const canManage = user?.is_superuser || user?.role === "admin";
   const { data, isFetching, error, refetch } = useGetChannelConnectionsQuery();
 
   const [disconnectTarget, setDisconnectTarget] = useState(null);

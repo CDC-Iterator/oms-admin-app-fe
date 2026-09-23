@@ -43,18 +43,21 @@ const CATALOG_ITEMS = [
   { title: "Channel Products", url: "/catalog/channel-products", icon: ShoppingBag },
 ];
 
-const SETTINGS_ITEMS = [
-  { title: "Locations", url: "/settings/locations", icon: Warehouse },
-  { title: "Channels", url: "/settings/channels", icon: Radio },
-  { title: "Activity Log", url: "/settings/activity", icon: Activity },
-];
+const SETTINGS_ITEMS = [{ title: "Locations", url: "/settings/locations", icon: Warehouse }];
 const PROFILE_ITEMS = [{ title: "Profile", url: "/settings/profile", icon: UserCircle }];
 
 // Shown to real superusers and business admins — the backend's own
-// IsSuperAdmin gate on /api/users/ still applies, so a role="admin" user
-// who isn't a Django superuser sees the item but gets a 403 on the API.
+// IsSuperAdmin gate (/api/users/, /api/channels/connections/,
+// /api/inventory/sync-log/) still applies, so a role="admin" user who
+// isn't a Django superuser sees these items but a plain `role="admin"`
+// check on the frontend alone would be the wrong gate to relax anyway —
+// this list mirrors the backend's own IsSuperAdmin semantics exactly.
 // Ordered above Profile, so it sits with the rest of Settings.
-const USER_MANAGEMENT_ITEMS = [{ title: "Users", url: "/settings/users", icon: UserCog }];
+const SUPER_ADMIN_SETTINGS_ITEMS = [
+  { title: "Channels", url: "/settings/channels", icon: Radio },
+  { title: "Activity Log", url: "/settings/activity", icon: Activity },
+  { title: "Users", url: "/settings/users", icon: UserCog },
+];
 
 function NavItems({ items, pathname }) {
   return items.map((item) => {
@@ -110,7 +113,7 @@ export function AppSidebar({ ...props }) {
             <SidebarMenu>
               <NavItems items={SETTINGS_ITEMS} pathname={location.pathname} />
               {(user?.is_superuser || user?.role === "admin") && (
-                <NavItems items={USER_MANAGEMENT_ITEMS} pathname={location.pathname} />
+                <NavItems items={SUPER_ADMIN_SETTINGS_ITEMS} pathname={location.pathname} />
               )}
               <NavItems items={PROFILE_ITEMS} pathname={location.pathname} />
             </SidebarMenu>
