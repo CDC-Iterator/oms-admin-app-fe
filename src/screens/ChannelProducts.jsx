@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { PackageSearch, RefreshCw } from "lucide-react";
+import { PackageSearch, RefreshCw, Unlink } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
@@ -7,12 +7,26 @@ import { EmptyState } from "../components/empty-state.jsx";
 import Pagination from "../components/Pagination.jsx";
 import ReferencePickerDialog from "../components/ReferencePickerDialog.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
-import { useGetProductsQuery, useUpsertChannelMappingMutation } from "../api/services/catalog.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.jsx";
+import {
+  useGetProductsQuery,
+  useRemoveChannelMappingMutation,
+  useUpsertChannelMappingMutation,
+} from "../api/services/catalog.js";
 import { useGetChannelProductsQuery, useSyncChannelProductsMutation } from "../api/services/channelProducts.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
@@ -130,6 +144,41 @@ function CatalogMappingPicker({ target, onOpenChange, onMapped }) {
   );
 }
 
+function UnmapConfirmDialog({ target, onOpenChange, onUnmapped }) {
+  const { showToast } = useToast();
+  const [removeMapping, { isLoading }] = useRemoveChannelMappingMutation();
+
+  const handleConfirm = async () => {
+    try {
+      await removeMapping({ variantId: target.mapped_sku_id, channel: target.channel }).unwrap();
+      showToast(`Mapping removed for ${target.external_sku}.`);
+      onUnmapped();
+    } catch (err) {
+      showToast(formatApiError(err));
+    }
+  };
+
+  return (
+    <AlertDialog open={Boolean(target)} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove mapping?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {target?.external_sku} will no longer be linked to {target?.mapped_item_code}. You can re-map it later
+            from either screen.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
+          <Button variant="destructive" onClick={handleConfirm} disabled={isLoading}>
+            {isLoading ? "Removing…" : "Remove mapping"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export default function ChannelProducts() {
   const { user } = useAuth();
   const canSync = user?.is_superuser || user?.role === "admin";
@@ -214,6 +263,7 @@ export default function ChannelProducts() {
   };
 
   const [mapTarget, setMapTarget] = useState(null);
+  const [unmapTarget, setUnmapTarget] = useState(null);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -333,17 +383,36 @@ export default function ChannelProducts() {
                       </TableCell>
                       <TableCell className="text-center">
                         {canManageMappings ? (
-                          <button
-                            type="button"
-                            onClick={() => setMapTarget(row)}
-                            className="rounded px-1 py-0.5 hover:bg-accent"
-                          >
-                            {row.mapped_item_code ? (
-                              <StatusBadge tone="success">{row.mapped_item_code}</StatusBadge>
-                            ) : (
-                              <StatusBadge tone="pending">Unmapped</StatusBadge>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setMapTarget(row)}
+                              className="rounded px-1 py-0.5 hover:bg-accent"
+                            >
+                              {row.mapped_item_code ? (
+                                <StatusBadge tone="success">{row.mapped_item_code}</StatusBadge>
+                              ) : (
+                                <StatusBadge tone="pending">Unmapped</StatusBadge>
+                              )}
+                            </button>
+                            {row.mapped_item_code && (
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <button
+                                      type="button"
+                                      onClick={() => setUnmapTarget(row)}
+                                      className="shrink-0 rounded p-0.5 hover:bg-accent"
+                                    />
+                                  }
+                                >
+                                  <Unlink className="size-3.5 text-muted-foreground" />
+                                  <span className="sr-only">Remove mapping</span>
+                                </TooltipTrigger>
+                                <TooltipContent>Remove mapping</TooltipContent>
+                              </Tooltip>
                             )}
-                          </button>
+                          </div>
                         ) : row.mapped_item_code ? (
                           <StatusBadge tone="success">{row.mapped_item_code}</StatusBadge>
                         ) : (
@@ -372,6 +441,11 @@ export default function ChannelProducts() {
         target={mapTarget}
         onOpenChange={(open) => !open && setMapTarget(null)}
         onMapped={() => setMapTarget(null)}
+      />
+      <UnmapConfirmDialog
+        target={unmapTarget}
+        onOpenChange={(open) => !open && setUnmapTarget(null)}
+        onUnmapped={() => setUnmapTarget(null)}
       />
     </div>
   );

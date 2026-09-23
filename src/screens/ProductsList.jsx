@@ -1,11 +1,20 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Boxes, Check, PackageSearch, X } from "lucide-react";
+import { Boxes, Check, PackageSearch, Unlink, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/empty-state.jsx";
 import Pagination from "../components/Pagination.jsx";
 import ReferencePickerDialog from "../components/ReferencePickerDialog.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -13,7 +22,11 @@ import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.jsx";
-import { useGetProductsQuery, useUpsertChannelMappingMutation } from "../api/services/catalog.js";
+import {
+  useGetProductsQuery,
+  useRemoveChannelMappingMutation,
+  useUpsertChannelMappingMutation,
+} from "../api/services/catalog.js";
 import { useGetChannelProductsQuery } from "../api/services/channelProducts.js";
 import { useGetInventoryLedgerQuery } from "../api/services/inventory.js";
 import { useAuth } from "../hooks/useAuth.js";
@@ -56,7 +69,7 @@ function variantLabel(variant) {
   return opts.length ? opts.join(" / ") : variant.item_code;
 }
 
-function MappingCell({ variant, channelKey, canManageMappings, onClick }) {
+function MappingCell({ variant, channelKey, canManageMappings, onClick, onUnmap }) {
   const mapping = variant.mappings?.[channelKey];
   const content = (
     <>
@@ -76,13 +89,26 @@ function MappingCell({ variant, channelKey, canManageMappings, onClick }) {
     return <div className="flex items-center justify-center gap-1.5">{content}</div>;
   }
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center justify-center gap-1.5 rounded px-1 py-0.5 hover:bg-accent"
-    >
-      {content}
-    </button>
+    <div className="flex w-full items-center justify-center gap-1">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded px-1 py-0.5 hover:bg-accent"
+      >
+        {content}
+      </button>
+      {mapping && (
+        <Tooltip>
+          <TooltipTrigger
+            render={<button type="button" onClick={onUnmap} className="shrink-0 rounded p-0.5 hover:bg-accent" />}
+          >
+            <Unlink className="size-3.5 text-muted-foreground" />
+            <span className="sr-only">Remove mapping</span>
+          </TooltipTrigger>
+          <TooltipContent>Remove mapping</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
   );
 }
 
@@ -157,6 +183,42 @@ function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
         </>
       )}
     />
+  );
+}
+
+function UnmapConfirmDialog({ target, onOpenChange, onUnmapped }) {
+  const { showToast } = useToast();
+  const [removeMapping, { isLoading }] = useRemoveChannelMappingMutation();
+
+  const handleConfirm = async () => {
+    try {
+      await removeMapping({ variantId: target.variant.id, channel: target.channelKey }).unwrap();
+      showToast(`Mapping removed for ${target.variant.item_code}.`);
+      onUnmapped();
+    } catch (err) {
+      showToast(formatApiError(err));
+    }
+  };
+
+  const channelLabel = CHANNELS.find((c) => c.key === target?.channelKey)?.label;
+  return (
+    <AlertDialog open={Boolean(target)} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove mapping?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {target?.variant.item_code} will no longer be linked to {target?.variant.mappings?.[target?.channelKey]?.external_sku} on{" "}
+            {channelLabel}. You can re-map it later from either screen.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
+          <Button variant="destructive" onClick={handleConfirm} disabled={isLoading}>
+            {isLoading ? "Removing…" : "Remove mapping"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -269,6 +331,7 @@ export default function ProductsList() {
   const groups = useMemo(() => groupByProduct(data?.rows ?? []), [data]);
 
   const [mappingTarget, setMappingTarget] = useState(null);
+  const [unmapTarget, setUnmapTarget] = useState(null);
   const [inventoryTarget, setInventoryTarget] = useState(null);
 
   return (
@@ -366,6 +429,7 @@ export default function ProductsList() {
                           channelKey="shopify"
                           canManageMappings={canManageMappings}
                           onClick={() => setMappingTarget({ variant, channelKey: "shopify" })}
+                          onUnmap={() => setUnmapTarget({ variant, channelKey: "shopify" })}
                         />
                       </TableCell>
                       <TableCell>
@@ -374,6 +438,7 @@ export default function ProductsList() {
                           channelKey="tatacliq"
                           canManageMappings={canManageMappings}
                           onClick={() => setMappingTarget({ variant, channelKey: "tatacliq" })}
+                          onUnmap={() => setUnmapTarget({ variant, channelKey: "tatacliq" })}
                         />
                       </TableCell>
                       <TableCell>
@@ -408,6 +473,11 @@ export default function ProductsList() {
         target={mappingTarget}
         onOpenChange={(open) => !open && setMappingTarget(null)}
         onMapped={() => setMappingTarget(null)}
+      />
+      <UnmapConfirmDialog
+        target={unmapTarget}
+        onOpenChange={(open) => !open && setUnmapTarget(null)}
+        onUnmapped={() => setUnmapTarget(null)}
       />
       <InventorySheet
         open={Boolean(inventoryTarget)}
