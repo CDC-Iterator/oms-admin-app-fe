@@ -4,11 +4,11 @@ import {
   BarChart3,
   Boxes,
   LayoutDashboard,
-  Link2,
   LogOut,
   PackageSearch,
   Radio,
   Receipt,
+  ShoppingBag,
   Tags,
   UserCircle,
   UserCog,
@@ -38,9 +38,9 @@ const NAV_ITEMS = [
 ];
 
 const CATALOG_ITEMS = [
-  { title: "Products", url: "/catalog/products", icon: Tags },
+  { title: "Product Master", url: "/catalog/products", icon: Tags },
   { title: "Inventory", url: "/catalog/inventory", icon: Boxes },
-  { title: "Unmapped SKUs", url: "/catalog/unmapped", icon: Link2 },
+  { title: "Channel Products", url: "/catalog/channel-products", icon: ShoppingBag },
 ];
 
 const SETTINGS_ITEMS = [

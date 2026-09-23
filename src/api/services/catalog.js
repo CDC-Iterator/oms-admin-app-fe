@@ -20,7 +20,7 @@ export const catalogApi = omsApi.injectEndpoints({
         method: "POST",
         body: { channel, external_sku, external_variant_id },
       }),
-      invalidatesTags: ["catalog"],
+      invalidatesTags: ["catalog", "channelProducts"],
     }),
   }),
 });

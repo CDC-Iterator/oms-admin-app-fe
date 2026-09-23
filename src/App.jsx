@@ -5,6 +5,7 @@ import PublicLayout from "./layouts/PublicLayout.jsx";
 import { AuthProvider } from "./providers/AuthProvider.jsx";
 import { ToastProvider } from "./providers/ToastProvider.jsx";
 import ActivityLog from "./screens/ActivityLog.jsx";
+import ChannelProducts from "./screens/ChannelProducts.jsx";
 import ChannelsList from "./screens/ChannelsList.jsx";
 import Dashboard from "./screens/Dashboard.jsx";
 import InventoryList from "./screens/InventoryList.jsx";
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="/orders/:id" element={<OrderDetail />} />
             <Route path="/catalog/products" element={<ProductsList />} />
             <Route path="/catalog/inventory" element={<InventoryList />} />
+            <Route path="/catalog/channel-products" element={<ChannelProducts />} />
             <Route path="/catalog/unmapped" element={<UnmappedSkus />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings/locations" element={<LocationsList />} />
