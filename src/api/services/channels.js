@@ -19,6 +19,16 @@ export const channelsApi = omsApi.injectEndpoints({
       query: (name) => ({ url: `/api/channels/connections/${name}/disconnect/`, method: "POST" }),
       invalidatesTags: ["channelConnections"],
     }),
+    // Sets extra['location_id'] only — Shopify's own connect/disconnect
+    // stay on the OAuth flow / disconnectChannel above.
+    setShopifyLocation: builder.mutation({
+      query: (locationId) => ({
+        url: "/api/channels/connections/shopify/location/",
+        method: "POST",
+        body: { location_id: locationId },
+      }),
+      invalidatesTags: ["channelConnections"],
+    }),
   }),
 });
 
@@ -27,4 +37,5 @@ export const {
   useGetChannelConnectionsQuery,
   useConnectTataCliqMutation,
   useDisconnectChannelMutation,
+  useSetShopifyLocationMutation,
 } = channelsApi;

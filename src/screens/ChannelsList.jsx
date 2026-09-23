@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link2, Unlink } from "lucide-react";
+import { Link2, TriangleAlert, Unlink } from "lucide-react";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
@@ -25,6 +25,7 @@ import {
   useDisconnectChannelMutation,
   useGetChannelConnectionsQuery,
   usePrepareShopifyInstallMutation,
+  useSetShopifyLocationMutation,
 } from "../api/services/channels.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
@@ -41,18 +42,25 @@ function storeNameFromDomain(domain) {
 // _SAFE_EXTRA_KEYS, the only fields a GET ever returns.
 const SUMMARY_LABELS = {
   shop_domain: "Store",
+  location_id: "Location (inventory pushes)",
   base_url: "Base URL",
   seller_code: "Seller code",
   username: "Username",
   caller_name: "Caller name",
+  slave_id: "Location / SlaveID (inventory pushes)",
 };
 
+// CDC carries 5+ warehouse Locations, but Shopify/TataCliq each only ever
+// have the one storefront-side location — this is that single id, not a
+// per-CDC-Location mapping. Every push_inventory call cumulative-rolls up
+// across all CDC Locations before sending, so there's nothing else to map.
 const TATACLIQ_FIELDS = [
   { key: "username", label: "Username" },
   { key: "seller_code", label: "Seller code" },
   { key: "caller_name", label: "Caller name" },
   { key: "basic_auth_token", label: "Basic auth token" },
   { key: "base_url", label: "Base URL", placeholder: "https://…" },
+  { key: "slave_id", label: "SlaveID (location) — optional, confirm with TataCliq", optional: true },
   { key: "password", label: "Password", type: "password" },
 ];
 
@@ -105,27 +113,83 @@ function ShopifyConnectForm() {
   );
 }
 
+// Shopify has no API for "which of my locations is the OMS one" — an admin
+// who already knows it's called "CDC Stock" just pastes its numeric id.
+// Plain text input, not a live-fetched picker: this repo's convention is to
+// validate a new Shopify capability against a real store before shipping it
+// (CLAUDE.md), and no local/test-store credential exists to verify a
+// locations-list query against, so a live picker isn't built here.
+function ShopifyLocationForm({ connection }) {
+  const { showToast } = useToast();
+  const [setLocation, { isLoading }] = useSetShopifyLocationMutation();
+  const [value, setValue] = useState(connection.summary.location_id ?? "");
+
+  useEffect(() => {
+    setValue(connection.summary.location_id ?? "");
+  }, [connection.summary.location_id]);
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    try {
+      await setLocation(trimmed).unwrap();
+      showToast("Shopify location saved.");
+    } catch (err) {
+      showToast(formatApiError(err));
+    }
+  };
+
+  return (
+    <form className="space-y-1.5" onSubmit={handleSave}>
+      <Label htmlFor="shopifyLocationId">Location id (Shopify's "CDC Stock")</Label>
+      <div className="flex gap-1.5">
+        <Input
+          id="shopifyLocationId"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="e.g. 90210000123"
+          className="h-8"
+        />
+        <Button type="submit" size="sm" disabled={isLoading || !value.trim()}>
+          {isLoading ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 // PartnerConnect key/value config, not OAuth — TataCliq has no install
 // flow, so this just saves credentials straight to StoreChannelCredential.
-function TataCliqConnectDialog({ open, onOpenChange, onConnected }) {
+// Doubles as the "edit" flow for an already-connected TataCliq: prefills
+// from `connection.summary` (everything but the two secret fields, which
+// the API never returns — those must always be re-entered).
+function TataCliqConnectDialog({ open, onOpenChange, onConnected, connection }) {
   const { showToast } = useToast();
   const [connect, { isLoading }] = useConnectTataCliqMutation();
   const [form, setForm] = useState({});
   const [error, setError] = useState(null);
+  const isEditing = Boolean(connection?.is_connected);
 
   useEffect(() => {
-    if (!open) {
-      setForm({});
+    if (open) {
+      setForm({
+        username: connection?.summary?.username ?? "",
+        seller_code: connection?.summary?.seller_code ?? "",
+        caller_name: connection?.summary?.caller_name ?? "",
+        base_url: connection?.summary?.base_url ?? "",
+        slave_id: connection?.summary?.slave_id ?? "",
+      });
       setError(null);
     }
-  }, [open]);
+  }, [open, connection]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
     try {
       await connect(form).unwrap();
-      showToast("TataCliq connected.");
+      showToast(isEditing ? "TataCliq connection updated." : "TataCliq connected.");
       onConnected();
     } catch (err) {
       setError(formatApiError(err));
@@ -136,8 +200,12 @@ function TataCliqConnectDialog({ open, onOpenChange, onConnected }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Connect TataCliq</DialogTitle>
-          <DialogDescription>PartnerConnect credentials from TataCliq's seller onboarding.</DialogDescription>
+          <DialogTitle>{isEditing ? "Edit TataCliq connection" : "Connect TataCliq"}</DialogTitle>
+          <DialogDescription>
+            {isEditing
+              ? "Basic auth token and password must be re-entered even if unchanged — the saved values never round-trip back to this form."
+              : "PartnerConnect credentials from TataCliq's seller onboarding."}
+          </DialogDescription>
         </DialogHeader>
         <form className="space-y-3" onSubmit={handleSubmit}>
           {error && (
@@ -155,13 +223,13 @@ function TataCliqConnectDialog({ open, onOpenChange, onConnected }) {
                 value={form[field.key] ?? ""}
                 onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
                 autoComplete="off"
-                required
+                required={!field.optional}
               />
             </div>
           ))}
           <DialogFooter>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Connecting…" : "Connect"}
+              {isLoading ? "Saving…" : isEditing ? "Save" : "Connect"}
             </Button>
           </DialogFooter>
         </form>
@@ -206,7 +274,7 @@ function DisconnectConfirmDialog({ target, onOpenChange, onDisconnected }) {
   );
 }
 
-function ConnectionCard({ connection, canManage, onDisconnect, children }) {
+function ConnectionCard({ connection, canManage, onDisconnect, connectedExtra, children }) {
   return (
     <Card>
       <CardHeader>
@@ -234,6 +302,13 @@ function ConnectionCard({ connection, canManage, onDisconnect, children }) {
                 ))}
               </dl>
             )}
+            {!connection.push_ready && (
+              <p className="flex items-start gap-1.5 text-xs text-[color-mix(in_srgb,var(--status-pending)_80%,black)]">
+                <TriangleAlert className="size-3.5 shrink-0 translate-y-0.5" />
+                Inventory pushes will fail until a location is set below.
+              </p>
+            )}
+            {canManage && connectedExtra}
             {canManage && (
               <Button variant="outline" size="sm" onClick={onDisconnect}>
                 <Unlink className="size-3.5" /> Disconnect
@@ -289,12 +364,26 @@ export default function ChannelsList() {
       ) : (
         <div className="grid max-w-3xl gap-4 sm:grid-cols-2">
           {shopify && (
-            <ConnectionCard connection={shopify} canManage={canManage} onDisconnect={() => setDisconnectTarget(shopify)}>
+            <ConnectionCard
+              connection={shopify}
+              canManage={canManage}
+              onDisconnect={() => setDisconnectTarget(shopify)}
+              connectedExtra={<ShopifyLocationForm connection={shopify} />}
+            >
               <ShopifyConnectForm />
             </ConnectionCard>
           )}
           {tatacliq && (
-            <ConnectionCard connection={tatacliq} canManage={canManage} onDisconnect={() => setDisconnectTarget(tatacliq)}>
+            <ConnectionCard
+              connection={tatacliq}
+              canManage={canManage}
+              onDisconnect={() => setDisconnectTarget(tatacliq)}
+              connectedExtra={
+                <Button variant="outline" size="sm" onClick={() => setTatacliqDialogOpen(true)}>
+                  <Link2 className="size-3.5" /> Edit
+                </Button>
+              }
+            >
               <Button size="sm" onClick={() => setTatacliqDialogOpen(true)}>
                 <Link2 className="size-3.5" /> Connect TataCliq
               </Button>
@@ -307,6 +396,7 @@ export default function ChannelsList() {
         open={tatacliqDialogOpen}
         onOpenChange={setTatacliqDialogOpen}
         onConnected={() => setTatacliqDialogOpen(false)}
+        connection={tatacliq}
       />
       <DisconnectConfirmDialog
         target={disconnectTarget}
