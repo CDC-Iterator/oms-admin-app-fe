@@ -3,6 +3,7 @@ import { Link2, TriangleAlert, Unlink } from "lucide-react";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
+import LocationChannelDiagram from "../components/LocationChannelDiagram.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import {
@@ -391,6 +392,8 @@ export default function ChannelsList() {
           )}
         </div>
       )}
+
+      {data && <LocationChannelDiagram connections={data} />}
 
       <TataCliqConnectDialog
         open={tatacliqDialogOpen}
