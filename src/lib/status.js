@@ -42,6 +42,37 @@ export function reservationTone(status) {
   }
 }
 
+/** Order.payment_status — Shopify's financial_status, e.g. "paid". */
+export function paymentTone(status) {
+  switch ((status || "").toLowerCase()) {
+    case "paid":
+      return "success";
+    case "partially_paid":
+    case "pending":
+      return "pending";
+    case "refunded":
+    case "partially_refunded":
+    case "voided":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+/** Order.fulfillment_status — Shopify's fulfillment_status, null = "unfulfilled". */
+export function fulfillmentTone(status) {
+  switch ((status || "").toLowerCase()) {
+    case "fulfilled":
+      return "success";
+    case "partial":
+      return "pending";
+    case "restocked":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
 /** SyncLog.status — apps.inventory.models. */
 export function syncTone(status) {
   switch ((status || "").toLowerCase()) {

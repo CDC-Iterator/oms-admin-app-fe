@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
 import { formatApiError } from "../lib/errors.js";
-import { reservationTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
+import { fulfillmentTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
 
@@ -47,7 +47,7 @@ function LineItemsRow({ orderId }) {
 
   return (
     <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={COLUMN_COUNT} className="bg-muted/20 py-3">
+      <TableCell colSpan={COLUMN_COUNT} className="bg-muted/20 py-2">
         {error ? (
           <p className="text-xs text-destructive">{formatApiError(error)}</p>
         ) : isFetching ? (
@@ -63,6 +63,7 @@ function LineItemsRow({ orderId }) {
                   <TableHead className="h-8 text-center text-[0.65rem]">Qty</TableHead>
                   <TableHead className="h-8 text-center text-[0.65rem]">Price</TableHead>
                   <TableHead className="h-8 text-[0.65rem]">Unit</TableHead>
+                  <TableHead className="h-8 text-[0.65rem]">Fulfilled by</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -80,6 +81,11 @@ function LineItemsRow({ orderId }) {
                           Suggested
                         </StatusBadge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge tone={li.is_dropship ? "pending" : "neutral"}>
+                        {li.is_dropship ? "Shipturtle" : "CDC"}
+                      </StatusBadge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -238,49 +244,56 @@ export default function OrdersList() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-8 border-b-2 border-border" />
-                <TableHead className="border-b-2 border-border">Order</TableHead>
-                <TableHead className="border-b-2 border-border">Channel</TableHead>
-                <TableHead className="border-b-2 border-border">Customer</TableHead>
-                <TableHead className="border-b-2 border-border">City</TableHead>
-                <TableHead className="border-b-2 border-border text-center">Total</TableHead>
-                <TableHead className="border-b-2 border-border text-center">Status</TableHead>
-                <TableHead className="border-b-2 border-border">Location</TableHead>
-                <TableHead className="border-b-2 border-border">Placed</TableHead>
+                <TableHead className="h-8 w-8 border-b-2 border-border" />
+                <TableHead className="h-8 border-b-2 border-border">Order</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Date</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Channel</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Customer</TableHead>
+                <TableHead className="h-8 border-b-2 border-border text-center">Total</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Payment</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Fulfillment</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Destination</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
                 const isExpanded = expandedIds.has(row.id);
+                const destination = [row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ");
                 return (
                   <Fragment key={row.id}>
                     <TableRow>
-                      <TableCell>
+                      <TableCell className="py-1.5">
                         <Button variant="ghost" size="icon-sm" onClick={() => toggleExpanded(row.id)}>
                           {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
                           <span className="sr-only">{isExpanded ? "Hide line items" : "Show line items"}</span>
                         </Button>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="py-1.5 font-mono text-xs">
                         <Link to={`/orders/${row.id}`} className="text-primary hover:underline" title={row.external_order_id}>
                           {row.order_name || row.external_order_id}
                         </Link>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">
+                        {row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"}
+                      </TableCell>
+                      <TableCell className="py-1.5">
                         <ChannelBadge channel={row.channel} />
                       </TableCell>
-                      <TableCell className="text-sm">{row.customer_name || "—"}</TableCell>
-                      <TableCell className="text-sm">{row.shipping_city || "—"}</TableCell>
-                      <TableCell className="text-center font-mono text-xs tabular-nums">
+                      <TableCell className="py-1.5 text-sm">{row.customer_name || "—"}</TableCell>
+                      <TableCell className="py-1.5 text-center font-mono text-xs tabular-nums">
                         {Number(row.total_amount ?? 0).toLocaleString("en-IN")}
                       </TableCell>
-                      <TableCell className="text-center">
-                        <StatusBadge tone={reservationTone(row.status)}>{row.status}</StatusBadge>
+                      <TableCell className="py-1.5">
+                        {row.payment_status ? (
+                          <StatusBadge tone={paymentTone(row.payment_status)}>{row.payment_status}</StatusBadge>
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
-                      <TableCell className="text-sm">{row.allocated_location || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
+                      <TableCell className="py-1.5">
+                        <StatusBadge tone={fulfillmentTone(row.fulfillment_status)}>{row.fulfillment_status}</StatusBadge>
                       </TableCell>
+                      <TableCell className="py-1.5 text-sm">{destination || "—"}</TableCell>
                     </TableRow>
                     {isExpanded && <LineItemsRow orderId={row.id} />}
                   </Fragment>

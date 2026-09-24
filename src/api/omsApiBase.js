@@ -32,6 +32,7 @@ export const omsApi = createApi({
     "activity",
     "reports",
     "users",
+    "shipments",
   ],
   endpoints: () => ({}),
 });
