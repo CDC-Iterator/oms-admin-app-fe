@@ -2,9 +2,10 @@ import axios from "axios";
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  // The refresh token rides an httpOnly cookie (Django sets it on login,
-  // scoped to /api/auth/) — this is what makes the browser send it back.
-  withCredentials: true,
+  // Stateless by default — every request carries only the Authorization
+  // header (see axiosBaseQuery.js). withCredentials is opted in per-request,
+  // only for login/refresh/logout, which are the sole endpoints that set,
+  // read, or clear the httpOnly refresh cookie.
   headers: {
     // Bypasses ngrok's free-tier browser-warning interstitial (ERR_NGROK_6024),
     // which otherwise answers browser-UA requests with an HTML page carrying no

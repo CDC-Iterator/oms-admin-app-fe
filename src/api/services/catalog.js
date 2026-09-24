@@ -20,9 +20,20 @@ export const catalogApi = omsApi.injectEndpoints({
         method: "POST",
         body: { channel, external_sku, external_variant_id },
       }),
-      invalidatesTags: ["catalog"],
+      invalidatesTags: ["catalog", "channelProducts"],
+    }),
+    // Clears sku on the (variantId, channel) mapping row — keeps the row
+    // and its synced channel_title/price/image_url, per ChannelSkuMapping's
+    // own "sku=None means unmapped" convention.
+    removeChannelMapping: builder.mutation({
+      query: ({ variantId, channel }) => ({
+        url: `/api/skus/${variantId}/channel-mappings/`,
+        method: "DELETE",
+        params: { channel },
+      }),
+      invalidatesTags: ["catalog", "channelProducts"],
     }),
   }),
 });
 
-export const { useGetProductsQuery, useUpsertChannelMappingMutation } = catalogApi;
+export const { useGetProductsQuery, useUpsertChannelMappingMutation, useRemoveChannelMappingMutation } = catalogApi;

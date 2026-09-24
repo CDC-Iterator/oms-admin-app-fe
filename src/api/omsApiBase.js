@@ -19,6 +19,19 @@ export const OMS_API_REDUCER_KEY = "omsApi";
 export const omsApi = createApi({
   reducerPath: OMS_API_REDUCER_KEY,
   baseQuery,
-  tagTypes: ["orders", "inventory", "catalog", "unmapped", "channels", "locations", "activity", "reports", "users"],
+  tagTypes: [
+    "orders",
+    "inventory",
+    "catalog",
+    "unmapped",
+    "channels",
+    "channelProducts",
+    "channelConnections",
+    "locationMappings",
+    "locations",
+    "activity",
+    "reports",
+    "users",
+  ],
   endpoints: () => ({}),
 });

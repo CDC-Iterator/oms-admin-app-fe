@@ -1,26 +1,33 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Boxes, Check, Link2, PackageSearch, X } from "lucide-react";
+import { Boxes, Check, PackageSearch, Unlink, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/empty-state.jsx";
 import Pagination from "../components/Pagination.jsx";
+import ReferencePickerDialog from "../components/ReferencePickerDialog.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
-import { Label } from "@/components/ui/label.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet.jsx";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.jsx";
-import { useGetProductsQuery, useUpsertChannelMappingMutation } from "../api/services/catalog.js";
+import {
+  useGetProductsQuery,
+  useRemoveChannelMappingMutation,
+  useUpsertChannelMappingMutation,
+} from "../api/services/catalog.js";
+import { useGetChannelProductsQuery } from "../api/services/channelProducts.js";
 import { useGetInventoryLedgerQuery } from "../api/services/inventory.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
@@ -62,10 +69,10 @@ function variantLabel(variant) {
   return opts.length ? opts.join(" / ") : variant.item_code;
 }
 
-function MappingCell({ variant, channelKey }) {
+function MappingCell({ variant, channelKey, canManageMappings, onClick, onUnmap }) {
   const mapping = variant.mappings?.[channelKey];
-  return (
-    <div className="flex items-center justify-center gap-1.5">
+  const content = (
+    <>
       {mapping ? (
         <Check className="size-4 shrink-0 text-[color-mix(in_srgb,var(--status-success)_70%,black)]" />
       ) : (
@@ -76,92 +83,142 @@ function MappingCell({ variant, channelKey }) {
           {mapping.external_sku}
         </span>
       )}
+    </>
+  );
+  if (!canManageMappings) {
+    return <div className="flex items-center justify-center gap-1.5">{content}</div>;
+  }
+  return (
+    <div className="flex w-full items-center justify-center gap-1">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded px-1 py-0.5 hover:bg-accent"
+      >
+        {content}
+      </button>
+      {mapping && (
+        <Tooltip>
+          <TooltipTrigger
+            render={<button type="button" onClick={onUnmap} className="shrink-0 rounded p-0.5 hover:bg-accent" />}
+          >
+            <Unlink className="size-3.5 text-muted-foreground" />
+            <span className="sr-only">Remove mapping</span>
+          </TooltipTrigger>
+          <TooltipContent>Remove mapping</TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 }
 
-function MappingForm({ open, onOpenChange, variant, onSaved }) {
+// Groups a /api/channels/products/ page by product_id — same shape
+// ChannelProducts.jsx's own groupByProduct already establishes.
+function groupChannelProductsByProduct(rows) {
+  const groups = [];
+  const byProductId = new Map();
+  for (const row of rows) {
+    let group = byProductId.get(row.product_id);
+    if (!group) {
+      group = { key: row.product_id, title: row.product_title, subtitle: row.vendor, imageUrl: row.image_url, variants: [] };
+      byProductId.set(row.product_id, group);
+      groups.push(group);
+    }
+    group.variants.push({ key: row.external_variant_id, ...row });
+  }
+  return groups;
+}
+
+// Reference picker for one (catalog variant, channel) pair — replaces
+// the old free-text mapping form: pick a row, the mapping is saved
+// immediately, no separate "Save" step.
+function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
   const { showToast } = useToast();
-  const [upsertMapping, { isLoading }] = useUpsertChannelMappingMutation();
-  const [channel, setChannel] = useState(CHANNELS[0].key);
-  const [externalSku, setExternalSku] = useState("");
-  const [externalVariantId, setExternalVariantId] = useState("");
-  const [error, setError] = useState(null);
+  const [upsertMapping] = useUpsertChannelMappingMutation();
+  const [search, setSearch] = useState(undefined);
 
-  useEffect(() => {
-    if (!variant) return;
-    const existing = variant.mappings?.[channel];
-    setExternalSku(existing?.external_sku ?? "");
-    setExternalVariantId(existing?.external_variant_id ?? "");
-    setError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant, channel, open]);
+  const { data, isFetching } = useGetChannelProductsQuery(
+    { channel: target?.channelKey, search },
+    { skip: !target }
+  );
+  const groups = useMemo(() => groupChannelProductsByProduct(data?.rows ?? []), [data]);
 
-  if (!variant) return null;
+  if (!target) return null;
+  const channelLabel = CHANNELS.find((c) => c.key === target.channelKey)?.label;
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError(null);
+  const handleSelect = async (row) => {
     try {
       await upsertMapping({
-        variantId: variant.id,
-        channel,
-        external_sku: externalSku,
-        external_variant_id: externalVariantId || undefined,
+        variantId: target.variant.id,
+        channel: target.channelKey,
+        external_sku: row.external_sku,
+        external_variant_id: row.external_variant_id,
       }).unwrap();
-      showToast(`${variant.item_code} mapped to ${channel}.`);
-      onSaved?.();
+      showToast(`${target.variant.item_code} mapped to ${row.external_sku} (${channelLabel}).`);
+      onMapped();
     } catch (err) {
-      setError(formatApiError(err));
+      showToast(formatApiError(err));
     }
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Manage mapping — {variant.item_code}</SheetTitle>
-          <SheetDescription>{variant.title} · {variantLabel(variant)}</SheetDescription>
-        </SheetHeader>
-        <form id="mapping-form" className="flex flex-1 flex-col gap-4 px-4" onSubmit={handleSubmit}>
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <div className="space-y-1.5">
-            <Label>Channel</Label>
-            <div className="flex gap-1.5">
-              {CHANNELS.map((c) => (
-                <Button
-                  key={c.key}
-                  type="button"
-                  size="sm"
-                  variant={channel === c.key ? "default" : "outline"}
-                  onClick={() => setChannel(c.key)}
-                >
-                  {c.label}
-                  {variant.mappings?.[c.key] && <Check className="size-3.5" />}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="external_sku">External SKU</Label>
-            <Input id="external_sku" value={externalSku} onChange={(e) => setExternalSku(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="external_variant_id">External variant ID (optional)</Label>
-            <Input id="external_variant_id" value={externalVariantId} onChange={(e) => setExternalVariantId(e.target.value)} />
-          </div>
-        </form>
-        <SheetFooter>
-          <Button type="submit" form="mapping-form" disabled={isLoading || !externalSku.trim()}>
-            {isLoading ? "Saving…" : "Save mapping"}
+    <ReferencePickerDialog
+      open={Boolean(target)}
+      onOpenChange={onOpenChange}
+      title={`Map ${target.variant.item_code} on ${channelLabel}`}
+      searchPlaceholder={`Search ${channelLabel} products…`}
+      onSearchChange={setSearch}
+      isFetching={isFetching}
+      groups={groups}
+      onSelect={handleSelect}
+      emptyTitle="No synced products found"
+      emptyDescription={`Run "Sync now" on Channel Products to pull the latest ${channelLabel} catalog.`}
+      renderVariant={(row) => (
+        <>
+          <span className="font-mono text-xs">{row.external_sku}</span>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {row.price ? Number(row.price).toLocaleString("en-IN") : ""}
+            {row.mapped_item_code && <StatusBadge tone="pending">mapped to {row.mapped_item_code}</StatusBadge>}
+          </span>
+        </>
+      )}
+    />
+  );
+}
+
+function UnmapConfirmDialog({ target, onOpenChange, onUnmapped }) {
+  const { showToast } = useToast();
+  const [removeMapping, { isLoading }] = useRemoveChannelMappingMutation();
+
+  const handleConfirm = async () => {
+    try {
+      await removeMapping({ variantId: target.variant.id, channel: target.channelKey }).unwrap();
+      showToast(`Mapping removed for ${target.variant.item_code}.`);
+      onUnmapped();
+    } catch (err) {
+      showToast(formatApiError(err));
+    }
+  };
+
+  const channelLabel = CHANNELS.find((c) => c.key === target?.channelKey)?.label;
+  return (
+    <AlertDialog open={Boolean(target)} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove mapping?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {target?.variant.item_code} will no longer be linked to {target?.variant.mappings?.[target?.channelKey]?.external_sku} on{" "}
+            {channelLabel}. You can re-map it later from either screen.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
+          <Button variant="destructive" onClick={handleConfirm} disabled={isLoading}>
+            {isLoading ? "Removing…" : "Remove mapping"}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -274,6 +331,7 @@ export default function ProductsList() {
   const groups = useMemo(() => groupByProduct(data?.rows ?? []), [data]);
 
   const [mappingTarget, setMappingTarget] = useState(null);
+  const [unmapTarget, setUnmapTarget] = useState(null);
   const [inventoryTarget, setInventoryTarget] = useState(null);
 
   return (
@@ -366,10 +424,22 @@ export default function ProductsList() {
                       </TableCell>
                       <TableCell className="font-mono text-xs">{variant.item_code}</TableCell>
                       <TableCell>
-                        <MappingCell variant={variant} channelKey="shopify" />
+                        <MappingCell
+                          variant={variant}
+                          channelKey="shopify"
+                          canManageMappings={canManageMappings}
+                          onClick={() => setMappingTarget({ variant, channelKey: "shopify" })}
+                          onUnmap={() => setUnmapTarget({ variant, channelKey: "shopify" })}
+                        />
                       </TableCell>
                       <TableCell>
-                        <MappingCell variant={variant} channelKey="tatacliq" />
+                        <MappingCell
+                          variant={variant}
+                          channelKey="tatacliq"
+                          canManageMappings={canManageMappings}
+                          onClick={() => setMappingTarget({ variant, channelKey: "tatacliq" })}
+                          onUnmap={() => setUnmapTarget({ variant, channelKey: "tatacliq" })}
+                        />
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-start gap-1.5">
@@ -384,19 +454,6 @@ export default function ProductsList() {
                             </TooltipTrigger>
                             <TooltipContent>Inventory</TooltipContent>
                           </Tooltip>
-                          {canManageMappings && (
-                            <Tooltip>
-                              <TooltipTrigger
-                                render={
-                                  <Button variant="outline" size="icon-sm" onClick={() => setMappingTarget(variant)} />
-                                }
-                              >
-                                <Link2 className="size-3.5" />
-                                <span className="sr-only">Manage mapping</span>
-                              </TooltipTrigger>
-                              <TooltipContent>Manage mapping</TooltipContent>
-                            </Tooltip>
-                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -412,11 +469,15 @@ export default function ProductsList() {
         <Pagination page={page} pageSize={PAGE_SIZE} count={data?.count ?? 0} onPageChange={setPage} />
       </div>
 
-      <MappingForm
-        open={Boolean(mappingTarget)}
+      <ChannelMappingPicker
+        target={mappingTarget}
         onOpenChange={(open) => !open && setMappingTarget(null)}
-        variant={mappingTarget}
-        onSaved={() => setMappingTarget(null)}
+        onMapped={() => setMappingTarget(null)}
+      />
+      <UnmapConfirmDialog
+        target={unmapTarget}
+        onOpenChange={(open) => !open && setUnmapTarget(null)}
+        onUnmapped={() => setUnmapTarget(null)}
       />
       <InventorySheet
         open={Boolean(inventoryTarget)}

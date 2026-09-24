@@ -35,7 +35,9 @@ export function ToastProvider({ children }) {
         <div
           role="status"
           className={cn(
-            "fixed right-4 bottom-4 z-50 flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm shadow-lg",
+            // Above the z-50 Dialog/AlertDialog/Sheet overlays, or their
+            // backdrop-blur paints over (and visually blurs) the toast.
+            "fixed right-4 bottom-4 z-[60] flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm shadow-lg",
             toast.error ? "bg-destructive text-background" : "bg-foreground text-background"
           )}
         >

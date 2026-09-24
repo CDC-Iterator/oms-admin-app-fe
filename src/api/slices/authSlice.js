@@ -1,25 +1,17 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const STORAGE_KEY = "cdc_oms_auth";
-
-function loadStoredAuth() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-const stored = loadStoredAuth();
-
-// The refresh token lives only in an httpOnly cookie (never in JS/localStorage)
-// — see api/axiosBaseQuery.js for the silent-refresh-on-401 flow that uses it.
+// Both the access token and the refresh token stay out of localStorage/
+// sessionStorage — the access token lives only here (in memory, gone on
+// reload) and the refresh token only in an httpOnly cookie neither JS nor
+// this slice ever touches. See providers/AuthProvider.jsx for the boot-time
+// silent refresh (cookie -> access token) this trades for "read it back
+// from storage", and api/axiosBaseQuery.js for the same refresh reused
+// reactively on a mid-session 401.
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    accessToken: stored?.accessToken ?? null,
-    user: stored?.user ?? null,
+    accessToken: null,
+    user: null,
   },
   reducers: {
     setCredentials: (state, action) => {
@@ -38,5 +30,4 @@ const authSlice = createSlice({
 });
 
 export const { setCredentials, setUser, logout } = authSlice.actions;
-export const AUTH_STORAGE_KEY = STORAGE_KEY;
 export default authSlice.reducer;
