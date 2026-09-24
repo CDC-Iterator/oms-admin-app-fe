@@ -27,6 +27,7 @@ export const omsApi = createApi({
     "channels",
     "channelProducts",
     "channelConnections",
+    "locationMappings",
     "locations",
     "activity",
     "reports",

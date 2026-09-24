@@ -1,4 +1,5 @@
 import { omsApi } from "../omsApiBase.js";
+import { unwrapList } from "../unwrapList.js";
 
 export const channelsApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -19,15 +20,35 @@ export const channelsApi = omsApi.injectEndpoints({
       query: (name) => ({ url: `/api/channels/connections/${name}/disconnect/`, method: "POST" }),
       invalidatesTags: ["channelConnections"],
     }),
-    // Sets extra['location_id'] only — Shopify's own connect/disconnect
-    // stay on the OAuth flow / disconnectChannel above.
-    setShopifyLocation: builder.mutation({
-      query: (locationId) => ({
-        url: "/api/channels/connections/shopify/location/",
+    // A channel can have more than one ChannelLocation now (real
+    // per-location push routing) — replaces the old single location_id.
+    addChannelLocation: builder.mutation({
+      query: ({ channel, external_id, name }) => ({
+        url: `/api/channels/connections/${channel}/locations/`,
         method: "POST",
-        body: { location_id: locationId },
+        body: { external_id, name },
       }),
       invalidatesTags: ["channelConnections"],
+    }),
+    removeChannelLocation: builder.mutation({
+      query: ({ channel, id }) => ({
+        url: `/api/channels/connections/${channel}/locations/${id}/`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["channelConnections"],
+    }),
+    getLocationMappings: builder.query({
+      query: () => ({ url: "/api/channels/location-mappings/" }),
+      transformResponse: unwrapList,
+      providesTags: ["locationMappings"],
+    }),
+    createLocationMapping: builder.mutation({
+      query: (body) => ({ url: "/api/channels/location-mappings/", method: "POST", body }),
+      invalidatesTags: ["locationMappings"],
+    }),
+    deleteLocationMapping: builder.mutation({
+      query: (id) => ({ url: `/api/channels/location-mappings/${id}/`, method: "DELETE" }),
+      invalidatesTags: ["locationMappings"],
     }),
   }),
 });
@@ -37,5 +58,9 @@ export const {
   useGetChannelConnectionsQuery,
   useConnectTataCliqMutation,
   useDisconnectChannelMutation,
-  useSetShopifyLocationMutation,
+  useAddChannelLocationMutation,
+  useRemoveChannelLocationMutation,
+  useGetLocationMappingsQuery,
+  useCreateLocationMappingMutation,
+  useDeleteLocationMappingMutation,
 } = channelsApi;

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link2, TriangleAlert, Unlink } from "lucide-react";
+import { Link2, TriangleAlert, Unlink, X } from "lucide-react";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
-import LocationChannelDiagram from "../components/LocationChannelDiagram.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import {
@@ -22,11 +21,12 @@ import { Input } from "@/components/ui/input.jsx";
 import { Label } from "@/components/ui/label.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import {
+  useAddChannelLocationMutation,
   useConnectTataCliqMutation,
   useDisconnectChannelMutation,
   useGetChannelConnectionsQuery,
   usePrepareShopifyInstallMutation,
-  useSetShopifyLocationMutation,
+  useRemoveChannelLocationMutation,
 } from "../api/services/channels.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
@@ -43,25 +43,18 @@ function storeNameFromDomain(domain) {
 // _SAFE_EXTRA_KEYS, the only fields a GET ever returns.
 const SUMMARY_LABELS = {
   shop_domain: "Store",
-  location_id: "Location (inventory pushes)",
   base_url: "Base URL",
   seller_code: "Seller code",
   username: "Username",
   caller_name: "Caller name",
-  slave_id: "Location / SlaveID (inventory pushes)",
 };
 
-// CDC carries 5+ warehouse Locations, but Shopify/TataCliq each only ever
-// have the one storefront-side location — this is that single id, not a
-// per-CDC-Location mapping. Every push_inventory call cumulative-rolls up
-// across all CDC Locations before sending, so there's nothing else to map.
 const TATACLIQ_FIELDS = [
   { key: "username", label: "Username" },
   { key: "seller_code", label: "Seller code" },
   { key: "caller_name", label: "Caller name" },
   { key: "basic_auth_token", label: "Basic auth token" },
   { key: "base_url", label: "Base URL", placeholder: "https://…" },
-  { key: "slave_id", label: "SlaveID (location) — optional, confirm with TataCliq", optional: true },
   { key: "password", label: "Password", type: "password" },
 ];
 
@@ -114,49 +107,79 @@ function ShopifyConnectForm() {
   );
 }
 
-// Shopify has no API for "which of my locations is the OMS one" — an admin
-// who already knows it's called "CDC Stock" just pastes its numeric id.
-// Plain text input, not a live-fetched picker: this repo's convention is to
-// validate a new Shopify capability against a real store before shipping it
-// (CLAUDE.md), and no local/test-store credential exists to verify a
-// locations-list query against, so a live picker isn't built here.
-function ShopifyLocationForm({ connection }) {
+// A channel can have more than one location now (Shopify may add a
+// warehouse later; TataCliq can have several SlaveIDs) — manual entry for
+// each, not a live-fetched picker: no testable store/seller credential
+// exists locally to verify a Shopify locations-list query against yet
+// (CLAUDE.md's "validate before shipping" convention), so this stays
+// plain text until one does.
+function ChannelLocationsManager({ connection }) {
   const { showToast } = useToast();
-  const [setLocation, { isLoading }] = useSetShopifyLocationMutation();
-  const [value, setValue] = useState(connection.summary.location_id ?? "");
+  const [addLocation, { isLoading: adding }] = useAddChannelLocationMutation();
+  const [removeLocation] = useRemoveChannelLocationMutation();
+  const [externalId, setExternalId] = useState("");
+  const [name, setName] = useState("");
 
-  useEffect(() => {
-    setValue(connection.summary.location_id ?? "");
-  }, [connection.summary.location_id]);
-
-  const handleSave = async (event) => {
+  const handleAdd = async (event) => {
     event.preventDefault();
-    const trimmed = value.trim();
+    const trimmed = externalId.trim();
     if (!trimmed) return;
     try {
-      await setLocation(trimmed).unwrap();
-      showToast("Shopify location saved.");
+      await addLocation({ channel: connection.name, external_id: trimmed, name: name.trim() }).unwrap();
+      setExternalId("");
+      setName("");
+    } catch (err) {
+      showToast(formatApiError(err));
+    }
+  };
+
+  const handleRemove = async (id) => {
+    try {
+      await removeLocation({ channel: connection.name, id }).unwrap();
     } catch (err) {
       showToast(formatApiError(err));
     }
   };
 
   return (
-    <form className="space-y-1.5" onSubmit={handleSave}>
-      <Label htmlFor="shopifyLocationId">Location id (Shopify's "CDC Stock")</Label>
-      <div className="flex gap-1.5">
+    <div className="space-y-1.5">
+      <Label>Locations (inventory pushes)</Label>
+      {connection.locations.length > 0 && (
+        <ul className="space-y-1">
+          {connection.locations.map((loc) => (
+            <li
+              key={loc.id}
+              className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs"
+            >
+              <span className="truncate">
+                <span className="font-mono">{loc.external_id}</span>
+                {loc.name && <span className="text-muted-foreground"> · {loc.name}</span>}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleRemove(loc.id)}
+                className="shrink-0 text-muted-foreground hover:text-destructive"
+                aria-label={`Remove ${loc.external_id}`}
+              >
+                <X className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="flex gap-1.5" onSubmit={handleAdd}>
         <Input
-          id="shopifyLocationId"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="e.g. 90210000123"
+          value={externalId}
+          onChange={(e) => setExternalId(e.target.value)}
+          placeholder="Location id"
           className="h-8"
         />
-        <Button type="submit" size="sm" disabled={isLoading || !value.trim()}>
-          {isLoading ? "Saving…" : "Save"}
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Label (optional)" className="h-8" />
+        <Button type="submit" size="sm" disabled={adding || !externalId.trim()}>
+          Add
         </Button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
 
@@ -179,7 +202,6 @@ function TataCliqConnectDialog({ open, onOpenChange, onConnected, connection }) 
         seller_code: connection?.summary?.seller_code ?? "",
         caller_name: connection?.summary?.caller_name ?? "",
         base_url: connection?.summary?.base_url ?? "",
-        slave_id: connection?.summary?.slave_id ?? "",
       });
       setError(null);
     }
@@ -369,7 +391,7 @@ export default function ChannelsList() {
               connection={shopify}
               canManage={canManage}
               onDisconnect={() => setDisconnectTarget(shopify)}
-              connectedExtra={<ShopifyLocationForm connection={shopify} />}
+              connectedExtra={<ChannelLocationsManager connection={shopify} />}
             >
               <ShopifyConnectForm />
             </ConnectionCard>
@@ -380,9 +402,12 @@ export default function ChannelsList() {
               canManage={canManage}
               onDisconnect={() => setDisconnectTarget(tatacliq)}
               connectedExtra={
-                <Button variant="outline" size="sm" onClick={() => setTatacliqDialogOpen(true)}>
-                  <Link2 className="size-3.5" /> Edit
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setTatacliqDialogOpen(true)}>
+                    <Link2 className="size-3.5" /> Edit credentials
+                  </Button>
+                  <ChannelLocationsManager connection={tatacliq} />
+                </>
               }
             >
               <Button size="sm" onClick={() => setTatacliqDialogOpen(true)}>
@@ -392,8 +417,6 @@ export default function ChannelsList() {
           )}
         </div>
       )}
-
-      {data && <LocationChannelDiagram connections={data} />}
 
       <TataCliqConnectDialog
         open={tatacliqDialogOpen}
