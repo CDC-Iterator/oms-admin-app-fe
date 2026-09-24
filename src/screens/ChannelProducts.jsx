@@ -374,7 +374,9 @@ export default function ChannelProducts() {
                   </TableRow>
                   {group.variants.map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="pl-6" />
+                      <TableCell className="truncate pl-6 text-sm text-muted-foreground" title={row.title}>
+                        {row.title && row.title !== "Default Title" ? row.title : "—"}
+                      </TableCell>
                       <TableCell />
                       <TableCell />
                       <TableCell className="font-mono text-xs">{row.external_sku || "—"}</TableCell>
