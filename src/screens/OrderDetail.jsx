@@ -43,6 +43,11 @@ import {
   SUGGESTION_HIDDEN_STATUSES,
 } from "../lib/status.js";
 
+// Mirrors the backend's REQUIRE_CONFIRMED_UNIT_FOR_SHIPMENT (config/
+// settings/base.py) — defaults off since production has no confirmed
+// units yet; flip both once the POS confirm flow is proven.
+const REQUIRE_CONFIRMED_UNIT = import.meta.env.VITE_REQUIRE_CONFIRMED_UNIT === "true";
+
 // One "what actually happened to this shipment" dropdown, not two — each
 // option carries both the coarse Shipment.Status to set and (where it's
 // more specific than that) the exact Shopify FulfillmentEventStatus to
@@ -383,7 +388,10 @@ export default function OrderDetail() {
     isShopifyOrder
       ? lineItems
           .filter(
-            (li) => !li.is_dropship && li.is_fully_confirmed && li.qty - (shippedByLine[li.id] ?? 0) > 0
+            (li) =>
+              !li.is_dropship &&
+              (!REQUIRE_CONFIRMED_UNIT || li.is_fully_confirmed) &&
+              li.qty - (shippedByLine[li.id] ?? 0) > 0
           )
           .map((li) => li.id)
       : []
@@ -510,7 +518,6 @@ export default function OrderDetail() {
                       <Table>
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
-                            {showCheckboxColumn && <TableHead className="w-8" />}
                             <TableHead>SKU</TableHead>
                             <TableHead>External SKU</TableHead>
                             <TableHead>Qty</TableHead>
@@ -521,9 +528,9 @@ export default function OrderDetail() {
                         <TableBody>
                           {group.entries.map(({ line, qty }) => (
                             <TableRow key={`${group.key}-${line.id}`}>
-                              {showCheckboxColumn && (
-                                <TableCell>
-                                  {shippableLineIds.has(line.id) && (
+                              <TableCell className="font-mono">
+                                <div className="flex items-center gap-2">
+                                  {showCheckboxColumn && shippableLineIds.has(line.id) && (
                                     <input
                                       type="checkbox"
                                       checked={selectedLineIds.has(line.id)}
@@ -531,15 +538,9 @@ export default function OrderDetail() {
                                       aria-label={`Select ${line.external_sku} for a shipment`}
                                     />
                                   )}
-                                </TableCell>
-                              )}
-                              <TableCell className="font-mono">
-                                {line.sku || "—"}
-                                {line.is_dropship && (
-                                  <StatusBadge tone="pending" className="ml-1.5">
-                                    Shipturtle
-                                  </StatusBadge>
-                                )}
+                                  {line.sku || "—"}
+                                  {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
+                                </div>
                               </TableCell>
                               <TableCell className="font-mono text-xs text-muted-foreground">
                                 {line.external_sku}
