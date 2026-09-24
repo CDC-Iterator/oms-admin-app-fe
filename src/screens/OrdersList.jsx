@@ -76,8 +76,12 @@ function LineItemsRow({ orderId }) {
                       {Number(li.price ?? 0).toLocaleString("en-IN")}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {li.inventory_unit ?? (showSuggested ? li.suggested_inventory_unit : null) ?? "—"}
-                      {!li.inventory_unit && showSuggested && li.suggested_inventory_unit && (
+                      {li.is_fully_confirmed
+                        ? li.confirmed_units.join(", ")
+                        : showSuggested && li.suggested_units?.length > 0
+                          ? li.suggested_units.join(", ")
+                          : "—"}
+                      {!li.is_fully_confirmed && showSuggested && li.suggested_units?.length > 0 && (
                         <StatusBadge tone="pending" className="ml-1.5">
                           Suggested
                         </StatusBadge>
