@@ -262,8 +262,8 @@ export default function OrdersList() {
                         </Button>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        <Link to={`/orders/${row.id}`} className="text-primary hover:underline">
-                          {row.external_order_id}
+                        <Link to={`/orders/${row.id}`} className="text-primary hover:underline" title={row.external_order_id}>
+                          {row.order_name || row.external_order_id}
                         </Link>
                       </TableCell>
                       <TableCell>

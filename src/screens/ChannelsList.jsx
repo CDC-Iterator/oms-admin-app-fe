@@ -27,6 +27,7 @@ import {
   useGetChannelConnectionsQuery,
   usePrepareShopifyInstallMutation,
   useRemoveChannelLocationMutation,
+  useSyncChannelLocationsMutation,
 } from "../api/services/channels.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
@@ -117,6 +118,7 @@ function ChannelLocationsManager({ connection }) {
   const { showToast } = useToast();
   const [addLocation, { isLoading: adding }] = useAddChannelLocationMutation();
   const [removeLocation] = useRemoveChannelLocationMutation();
+  const [syncLocations, { isLoading: syncing }] = useSyncChannelLocationsMutation();
   const [externalId, setExternalId] = useState("");
   const [name, setName] = useState("");
 
@@ -141,9 +143,25 @@ function ChannelLocationsManager({ connection }) {
     }
   };
 
+  const handleSync = async () => {
+    try {
+      const created = await syncLocations(connection.name).unwrap();
+      showToast(created.length ? `Added ${created.length} location(s) from Shopify.` : "No new active locations found.");
+    } catch (err) {
+      showToast(formatApiError(err));
+    }
+  };
+
   return (
     <div className="space-y-1.5">
-      <Label>Locations (inventory pushes)</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label>Locations (inventory pushes)</Label>
+        {connection.name === "shopify" && (
+          <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={handleSync} disabled={syncing}>
+            {syncing ? "Syncing…" : "Sync from Shopify"}
+          </Button>
+        )}
+      </div>
       {connection.locations.length > 0 && (
         <ul className="space-y-1">
           {connection.locations.map((loc) => (

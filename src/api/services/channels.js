@@ -37,6 +37,12 @@ export const channelsApi = omsApi.injectEndpoints({
       }),
       invalidatesTags: ["channelConnections"],
     }),
+    // Shopify only — pulls every active Shopify Location and creates a
+    // ChannelLocation for any not already configured.
+    syncChannelLocations: builder.mutation({
+      query: (channel) => ({ url: `/api/channels/connections/${channel}/locations/sync/`, method: "POST" }),
+      invalidatesTags: ["channelConnections"],
+    }),
     getLocationMappings: builder.query({
       query: () => ({ url: "/api/channels/location-mappings/" }),
       transformResponse: unwrapList,
@@ -60,6 +66,7 @@ export const {
   useDisconnectChannelMutation,
   useAddChannelLocationMutation,
   useRemoveChannelLocationMutation,
+  useSyncChannelLocationsMutation,
   useGetLocationMappingsQuery,
   useCreateLocationMappingMutation,
   useDeleteLocationMappingMutation,
