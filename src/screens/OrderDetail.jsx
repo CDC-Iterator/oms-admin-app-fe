@@ -507,6 +507,11 @@ export default function OrderDetail() {
                           ) : (
                             <span className="text-sm font-medium">Unfulfilled</span>
                           )}
+                          {fullShipment?.last_reported_tracking_event_at && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(fullShipment.last_reported_tracking_event_at).toLocaleString()}
+                            </span>
+                          )}
                           {group.shipmentRef && (
                             <span className="text-xs text-muted-foreground capitalize">
                               {group.shipmentRef.carrier_name || group.shipmentRef.courier}
@@ -539,8 +544,8 @@ export default function OrderDetail() {
                           <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[28%]">SKU</TableHead>
                             <TableHead className="w-[18%]">External SKU</TableHead>
-                            <TableHead className="w-[10%]">Qty</TableHead>
-                            <TableHead className="w-[12%]">Price</TableHead>
+                            <TableHead className="w-[10%] text-right">Qty</TableHead>
+                            <TableHead className="w-[12%] text-right">Price</TableHead>
                             <TableHead className="w-[32%]">Suggested / reserved unit</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -564,8 +569,8 @@ export default function OrderDetail() {
                               <TableCell className="font-mono text-xs text-muted-foreground">
                                 {line.external_sku}
                               </TableCell>
-                              <TableCell className="font-mono tabular-nums">{qty}</TableCell>
-                              <TableCell className="font-mono tabular-nums">
+                              <TableCell className="font-mono tabular-nums text-right">{qty}</TableCell>
+                              <TableCell className="font-mono tabular-nums text-right">
                                 {Number(line.price ?? 0).toLocaleString("en-IN")}
                               </TableCell>
                               <TableCell>
