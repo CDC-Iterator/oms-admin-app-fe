@@ -48,6 +48,23 @@ import {
 // units yet; flip both once the POS confirm flow is proven.
 const REQUIRE_CONFIRMED_UNIT = import.meta.env.VITE_REQUIRE_CONFIRMED_UNIT === "true";
 
+// Every Shipment.TrackingEventStatus value (apps/fulfilment/models.py),
+// for displaying last_reported_tracking_event_status — the persistent
+// record of the last milestone actually pushed to Shopify.
+const TRACKING_EVENT_LABELS = {
+  CONFIRMED: "Confirmed",
+  LABEL_PURCHASED: "Label purchased",
+  LABEL_PRINTED: "Label printed",
+  CARRIER_PICKED_UP: "Picked up by carrier",
+  IN_TRANSIT: "In transit",
+  OUT_FOR_DELIVERY: "Out for delivery",
+  DELIVERED: "Delivered",
+  ATTEMPTED_DELIVERY: "Attempted delivery",
+  DELAYED: "Delayed",
+  READY_FOR_PICKUP: "Ready for pickup",
+  FAILURE: "Failure",
+};
+
 // One "what actually happened to this shipment" dropdown, not two — each
 // option carries both the coarse Shipment.Status to set and (where it's
 // more specific than that) the exact Shopify FulfillmentEventStatus to
@@ -483,10 +500,17 @@ export default function OrderDetail() {
                         <div className="flex items-center gap-2">
                           {group.shipmentRef ? (
                             <StatusBadge tone={shipmentTone(group.shipmentRef.status)}>
-                              {group.shipmentRef.status}
+                              {(fullShipment?.last_reported_tracking_event_status &&
+                                TRACKING_EVENT_LABELS[fullShipment.last_reported_tracking_event_status]) ??
+                                group.shipmentRef.status}
                             </StatusBadge>
                           ) : (
                             <span className="text-sm font-medium">Unfulfilled</span>
+                          )}
+                          {fullShipment?.last_reported_tracking_event_at && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(fullShipment.last_reported_tracking_event_at).toLocaleString()}
+                            </span>
                           )}
                           {group.shipmentRef && (
                             <span className="text-xs text-muted-foreground capitalize">
@@ -515,14 +539,14 @@ export default function OrderDetail() {
                           )}
                         </div>
                       </div>
-                      <Table>
+                      <Table className="table-fixed">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
-                            <TableHead>SKU</TableHead>
-                            <TableHead>External SKU</TableHead>
-                            <TableHead>Qty</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Suggested / reserved unit</TableHead>
+                            <TableHead className="w-[28%]">SKU</TableHead>
+                            <TableHead className="w-[18%]">External SKU</TableHead>
+                            <TableHead className="w-[10%] text-right">Qty</TableHead>
+                            <TableHead className="w-[12%] text-right">Price</TableHead>
+                            <TableHead className="w-[32%]">Suggested / reserved unit</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -545,8 +569,8 @@ export default function OrderDetail() {
                               <TableCell className="font-mono text-xs text-muted-foreground">
                                 {line.external_sku}
                               </TableCell>
-                              <TableCell className="font-mono tabular-nums">{qty}</TableCell>
-                              <TableCell className="font-mono tabular-nums">
+                              <TableCell className="font-mono tabular-nums text-right">{qty}</TableCell>
+                              <TableCell className="font-mono tabular-nums text-right">
                                 {Number(line.price ?? 0).toLocaleString("en-IN")}
                               </TableCell>
                               <TableCell>
