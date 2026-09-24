@@ -128,7 +128,9 @@ export default function OrderDetail() {
             <Card>
               <CardHeader className="flex-row items-start justify-between gap-3">
                 <div>
-                  <CardTitle className="font-mono text-base">{order.external_order_id}</CardTitle>
+                  <CardTitle className="font-mono text-base" title={order.external_order_id}>
+                    {order.order_name || order.external_order_id}
+                  </CardTitle>
                   <p className="mt-1 text-sm text-muted-foreground">{order.customer_name}</p>
                 </div>
                 <div className="flex items-center gap-2">
