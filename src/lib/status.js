@@ -73,6 +73,22 @@ export function fulfillmentTone(status) {
   }
 }
 
+/** Shipment.status — apps.fulfilment.models. */
+export function shipmentTone(status) {
+  switch ((status || "").toLowerCase()) {
+    case "delivered":
+      return "success";
+    case "created":
+    case "in_transit":
+      return "pending";
+    case "rto":
+    case "cancelled":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
 /** SyncLog.status — apps.inventory.models. */
 export function syncTone(status) {
   switch ((status || "").toLowerCase()) {

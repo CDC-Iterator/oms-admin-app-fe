@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
+import { FulfilledByBadge } from "../components/FulfilledByBadge.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
@@ -83,9 +84,7 @@ function LineItemsRow({ orderId }) {
                       )}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge tone={li.is_dropship ? "pending" : "neutral"}>
-                        {li.is_dropship ? "Shipturtle" : "CDC"}
-                      </StatusBadge>
+                      <FulfilledByBadge lineItem={li} />
                     </TableCell>
                   </TableRow>
                 ))}
