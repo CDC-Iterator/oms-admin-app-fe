@@ -500,7 +500,9 @@ export default function OrderDetail() {
                         <div className="flex items-center gap-2">
                           {group.shipmentRef ? (
                             <StatusBadge tone={shipmentTone(group.shipmentRef.status)}>
-                              {group.shipmentRef.status}
+                              {(fullShipment?.last_reported_tracking_event_status &&
+                                TRACKING_EVENT_LABELS[fullShipment.last_reported_tracking_event_status]) ??
+                                group.shipmentRef.status}
                             </StatusBadge>
                           ) : (
                             <span className="text-sm font-medium">Unfulfilled</span>
@@ -514,12 +516,6 @@ export default function OrderDetail() {
                             <span className="font-mono text-xs text-muted-foreground">
                               AWB {fullShipment.awb_number}
                             </span>
-                          )}
-                          {fullShipment?.last_reported_tracking_event_status && (
-                            <StatusBadge tone="pending">
-                              {TRACKING_EVENT_LABELS[fullShipment.last_reported_tracking_event_status] ??
-                                fullShipment.last_reported_tracking_event_status}
-                            </StatusBadge>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
