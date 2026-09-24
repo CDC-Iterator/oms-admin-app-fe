@@ -25,7 +25,22 @@ export const fulfilmentApi = omsApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }],
     }),
+    // Edits an already-booked shipment's carrier details/status — courier
+    // and line items are fixed at creation, not editable here.
+    updateShipment: builder.mutation({
+      query: ({ orderId, shipmentId, ...body }) => ({
+        url: `/api/orders/${orderId}/shipments/${shipmentId}/`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }],
+    }),
   }),
 });
 
-export const { useGetShipmentsQuery, useCreateShipmentMutation, useCreateManualShipmentMutation } = fulfilmentApi;
+export const {
+  useGetShipmentsQuery,
+  useCreateShipmentMutation,
+  useCreateManualShipmentMutation,
+  useUpdateShipmentMutation,
+} = fulfilmentApi;

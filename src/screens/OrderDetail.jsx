@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, Ban, PackageCheck, RefreshCw, Truck, Undo2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Ban, PackageCheck, Pencil, Plus, RefreshCw, Truck, Undo2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
@@ -28,9 +29,21 @@ import {
   usePostOrderEventMutation,
   useRefreshSuggestedUnitMutation,
 } from "../api/services/orders.js";
-import { useCreateManualShipmentMutation, useGetShipmentsQuery } from "../api/services/fulfilment.js";
+import {
+  useCreateManualShipmentMutation,
+  useGetShipmentsQuery,
+  useUpdateShipmentMutation,
+} from "../api/services/fulfilment.js";
 import { formatApiError } from "../lib/errors.js";
 import { fulfillmentTone, paymentTone, reservationTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
+
+const SHIPMENT_STATUS_OPTIONS = [
+  { value: "created", label: "Created" },
+  { value: "in_transit", label: "In transit" },
+  { value: "delivered", label: "Delivered" },
+  { value: "rto", label: "RTO" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
 const SHIPMENT_STATUS_TONE = {
   created: "pending",
@@ -39,15 +52,6 @@ const SHIPMENT_STATUS_TONE = {
   rto: "danger",
   cancelled: "danger",
 };
-
-// Only "manual" has a real connector today (CDC-78/79/80 — Shipway/
-// Shipdelight/Quicklee — are stubs, apps/fulfilment/connectors/_stub.py).
-const COURIER_OPTIONS = [
-  { value: "manual", label: "Manual (AWB + carrier)", disabled: false },
-  { value: "shipway", label: "Shipway — coming soon", disabled: true },
-  { value: "shipdelight", label: "Shipdelight — coming soon", disabled: true },
-  { value: "quicklee", label: "Quicklee — coming soon", disabled: true },
-];
 
 const EVENT_MODES = {
   cancelled: { label: "Cancel order", verb: "Cancel", icon: Ban, description: "The reserved unit is released back into the ledger. This can't be undone." },
@@ -96,42 +100,39 @@ function SuggestedUnitCell({ orderId, orderStatus, lineItem }) {
   );
 }
 
-// Dedicated fulfillment/shipment creation — separate from the Lines card.
-// Manual-only for now (see COURIER_OPTIONS above); shipment history is
-// visible to any authenticated role, creation is admin-only (mirrors the
-// backend's IsAdmin gate on both POST endpoints).
-function FulfillmentCard({ order }) {
-  const { user } = useAuth();
-  const isAdmin = user?.is_superuser || user?.role === "admin";
-  const orderId = order.id;
-  const lineItems = order.line_items ?? [];
-
-  const { data: shipments, isFetching, error, refetch } = useGetShipmentsQuery(orderId);
+// Create/edit modal for a single shipment. `shipment` present → edit
+// (courier/line items fixed, only carrier details + status change);
+// `shipment` absent → create (manual courier only, line-item picker).
+function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange }) {
+  const isEditing = Boolean(shipment);
   const [createManualShipment, { isLoading: isCreating }] = useCreateManualShipmentMutation();
+  const [updateShipment, { isLoading: isUpdating }] = useUpdateShipmentMutation();
+  const isSaving = isCreating || isUpdating;
 
-  const [courier, setCourier] = useState("manual");
   const [awb, setAwb] = useState("");
   const [carrierName, setCarrierName] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
+  const [shipmentStatus, setShipmentStatus] = useState("created");
   const [qtyByLine, setQtyByLine] = useState({});
   const [formError, setFormError] = useState(null);
 
-  const shippedByLine = {};
-  for (const s of shipments ?? []) {
-    for (const li of s.line_items) {
-      shippedByLine[li.order_line_item] = (shippedByLine[li.order_line_item] ?? 0) + li.qty;
-    }
-  }
-  const remaining = (li) => li.qty - (shippedByLine[li.id] ?? 0);
+  // Re-seed the form from `shipment` (or blank, for create) each time the
+  // dialog opens — a plain useState initializer only runs once per mount.
+  useEffect(() => {
+    if (!open) return;
+    setAwb(shipment?.awb_number ?? "");
+    setCarrierName(shipment?.carrier_name ?? "");
+    setTrackingUrl(shipment?.tracking_url ?? "");
+    setShipmentStatus(shipment?.status ?? "created");
+    setQtyByLine(isEditing ? {} : Object.fromEntries(shippableLines.map((li) => [li.id, li.remaining])));
+    setFormError(null);
+  }, [open, shipment]);
 
   const toggleLine = (li, checked) => {
     setQtyByLine((prev) => {
       const next = { ...prev };
-      if (checked) {
-        next[li.id] = remaining(li);
-      } else {
-        delete next[li.id];
-      }
+      if (checked) next[li.id] = li.remaining;
+      else delete next[li.id];
       return next;
     });
   };
@@ -141,31 +142,139 @@ function FulfillmentCard({ order }) {
   const handleSubmit = async () => {
     setFormError(null);
     try {
-      await createManualShipment({
-        orderId,
-        awb_number: awb,
-        carrier_name: carrierName,
-        tracking_url: trackingUrl || undefined,
-        line_items: selectedLineItems.map(([line_item, qty]) => ({ line_item: Number(line_item), qty })),
-      }).unwrap();
-      setAwb("");
-      setCarrierName("");
-      setTrackingUrl("");
-      setQtyByLine({});
+      if (isEditing) {
+        await updateShipment({
+          orderId,
+          shipmentId: shipment.id,
+          awb_number: awb,
+          carrier_name: carrierName,
+          tracking_url: trackingUrl,
+          status: shipmentStatus,
+        }).unwrap();
+      } else {
+        await createManualShipment({
+          orderId,
+          awb_number: awb,
+          carrier_name: carrierName,
+          tracking_url: trackingUrl || undefined,
+          line_items: selectedLineItems.map(([line_item, qty]) => ({ line_item: Number(line_item), qty })),
+        }).unwrap();
+      }
+      onOpenChange(false);
     } catch (err) {
       setFormError(formatApiError(err));
     }
   };
 
-  const shippableLines = lineItems.filter((li) => remaining(li) > 0);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit shipment" : "Book shipment"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {isEditing ? (
+            <Select value={shipmentStatus} onChange={(e) => setShipmentStatus(e.target.value)}>
+              {SHIPMENT_STATUS_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Courier: <span className="font-medium text-foreground">Manual</span> — Shipway/Shipdelight/Quicklee
+                are coming soon.
+              </p>
+
+              <div className="space-y-1.5">
+                {shippableLines.map((li) => (
+                  <label key={li.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={li.id in qtyByLine}
+                      onChange={(e) => toggleLine(li, e.target.checked)}
+                    />
+                    <span className="font-mono text-xs">{li.external_sku}</span>
+                    <span className="text-xs text-muted-foreground">({li.remaining} unshipped)</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="AWB number" value={awb} onChange={(e) => setAwb(e.target.value)} />
+            <Input placeholder="Carrier name" value={carrierName} onChange={(e) => setCarrierName(e.target.value)} />
+            <Input
+              placeholder="Tracking URL (optional)"
+              className="col-span-2"
+              value={trackingUrl}
+              onChange={(e) => setTrackingUrl(e.target.value)}
+            />
+          </div>
+
+          {formError && (
+            <Alert variant="destructive">
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSaving || !awb || !carrierName || (!isEditing && selectedLineItems.length === 0)}
+          >
+            {isSaving ? "Saving…" : isEditing ? "Save changes" : "Book shipment"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Dedicated fulfillment/shipment creation — separate from the Lines card.
+// Shipment history is visible to any authenticated role; create/edit is
+// admin-only (mirrors the backend's IsAdmin gate on those endpoints).
+// Dropship (`is_dropship`) lines never appear as shippable — the channel's
+// own vendor (Shipturtle) fulfills those, this OMS never ships them.
+function FulfillmentCard({ order }) {
+  const { user } = useAuth();
+  const isAdmin = user?.is_superuser || user?.role === "admin";
+  const orderId = order.id;
+  const lineItems = (order.line_items ?? []).filter((li) => !li.is_dropship);
+
+  const { data: shipments, isFetching, error, refetch } = useGetShipmentsQuery(orderId);
+  const [dialogTarget, setDialogTarget] = useState(null); // null closed, {} create, shipment edit
+
+  const shippedByLine = {};
+  for (const s of shipments ?? []) {
+    for (const li of s.line_items) {
+      shippedByLine[li.order_line_item] = (shippedByLine[li.order_line_item] ?? 0) + li.qty;
+    }
+  }
+  const shippableLines = lineItems
+    .map((li) => ({ ...li, remaining: li.qty - (shippedByLine[li.id] ?? 0) }))
+    .filter((li) => li.remaining > 0);
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">Fulfillment</CardTitle>
-        <p className="text-xs text-muted-foreground">Book a shipment and push tracking back to the channel.</p>
+      <CardHeader className="flex-row items-center justify-between gap-3">
+        <div>
+          <CardTitle className="text-sm font-medium">Fulfillment</CardTitle>
+          <p className="text-xs text-muted-foreground">Book a shipment and push tracking back to the channel.</p>
+        </div>
+        {isAdmin && shippableLines.length > 0 && (
+          <Button size="sm" variant="outline" onClick={() => setDialogTarget({})}>
+            <Plus className="size-3.5" />
+            Book shipment
+          </Button>
+        )}
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>
@@ -186,71 +295,31 @@ function FulfillmentCard({ order }) {
                   <span className="font-medium capitalize">{s.carrier_name || s.courier}</span>
                   {s.awb_number && <span className="font-mono text-xs text-muted-foreground">{s.awb_number}</span>}
                 </div>
-                <StatusBadge tone={SHIPMENT_STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusBadge>
+                <div className="flex items-center gap-2">
+                  <StatusBadge tone={SHIPMENT_STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusBadge>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon-sm" onClick={() => setDialogTarget(s)} aria-label="Edit shipment">
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">No shipments booked yet.</p>
         )}
-
-        {isAdmin && shippableLines.length > 0 && (
-          <div className="space-y-3 border-t border-border pt-4">
-            <p className="text-xs font-medium text-muted-foreground uppercase">Create shipment</p>
-
-            <Select value={courier} onChange={(e) => setCourier(e.target.value)}>
-              {COURIER_OPTIONS.map((c) => (
-                <option key={c.value} value={c.value} disabled={c.disabled}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
-
-            <div className="space-y-1.5">
-              {shippableLines.map((li) => (
-                <label key={li.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={li.id in qtyByLine}
-                    onChange={(e) => toggleLine(li, e.target.checked)}
-                  />
-                  <span className="font-mono text-xs">{li.external_sku}</span>
-                  <span className="text-xs text-muted-foreground">({remaining(li)} unshipped)</span>
-                </label>
-              ))}
-            </div>
-
-            {courier === "manual" && (
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="AWB number" value={awb} onChange={(e) => setAwb(e.target.value)} />
-                <Input placeholder="Carrier name" value={carrierName} onChange={(e) => setCarrierName(e.target.value)} />
-                <Input
-                  placeholder="Tracking URL (optional)"
-                  className="col-span-2"
-                  value={trackingUrl}
-                  onChange={(e) => setTrackingUrl(e.target.value)}
-                />
-              </div>
-            )}
-
-            {formError && (
-              <Alert variant="destructive">
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button
-              size="sm"
-              onClick={handleSubmit}
-              disabled={
-                isCreating || courier !== "manual" || selectedLineItems.length === 0 || !awb || !carrierName
-              }
-            >
-              {isCreating ? "Booking…" : "Book shipment"}
-            </Button>
-          </div>
-        )}
       </CardContent>
+
+      {isAdmin && (
+        <ShipmentDialog
+          orderId={orderId}
+          shipment={dialogTarget && dialogTarget.id ? dialogTarget : null}
+          shippableLines={shippableLines}
+          open={Boolean(dialogTarget)}
+          onOpenChange={(open) => !open && setDialogTarget(null)}
+        />
+      )}
     </Card>
   );
 }
