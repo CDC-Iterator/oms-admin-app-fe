@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { ChannelBadge } from "@/components/ChannelBadge.jsx";
 import { EmptyState } from "@/components/empty-state.jsx";
+import { FulfilledByBadge } from "@/components/FulfilledByBadge.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import {
@@ -35,7 +36,13 @@ import {
   useUpdateShipmentMutation,
 } from "../api/services/fulfilment.js";
 import { formatApiError } from "../lib/errors.js";
-import { fulfillmentTone, paymentTone, reservationTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
+import {
+  fulfillmentTone,
+  paymentTone,
+  reservationTone,
+  shipmentTone,
+  SUGGESTION_HIDDEN_STATUSES,
+} from "../lib/status.js";
 
 const SHIPMENT_STATUS_OPTIONS = [
   { value: "created", label: "Created" },
@@ -44,14 +51,6 @@ const SHIPMENT_STATUS_OPTIONS = [
   { value: "rto", label: "RTO" },
   { value: "cancelled", label: "Cancelled" },
 ];
-
-const SHIPMENT_STATUS_TONE = {
-  created: "pending",
-  in_transit: "pending",
-  delivered: "success",
-  rto: "danger",
-  cancelled: "danger",
-};
 
 const EVENT_MODES = {
   cancelled: { label: "Cancel order", verb: "Cancel", icon: Ban, description: "The reserved unit is released back into the ledger. This can't be undone." },
@@ -296,7 +295,7 @@ function FulfillmentCard({ order }) {
                   {s.awb_number && <span className="font-mono text-xs text-muted-foreground">{s.awb_number}</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <StatusBadge tone={SHIPMENT_STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusBadge>
+                  <StatusBadge tone={shipmentTone(s.status)}>{s.status}</StatusBadge>
                   {isAdmin && (
                     <Button variant="ghost" size="icon-sm" onClick={() => setDialogTarget(s)} aria-label="Edit shipment">
                       <Pencil className="size-3.5" />
@@ -422,9 +421,7 @@ export default function OrderDetail() {
                           <SuggestedUnitCell orderId={id} orderStatus={order.status} lineItem={li} />
                         </TableCell>
                         <TableCell>
-                          <StatusBadge tone={li.is_dropship ? "pending" : "neutral"}>
-                            {li.is_dropship ? "Shipturtle" : "CDC"}
-                          </StatusBadge>
+                          <FulfilledByBadge lineItem={li} />
                         </TableCell>
                       </TableRow>
                     ))}
