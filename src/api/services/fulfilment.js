@@ -15,7 +15,10 @@ export const fulfilmentApi = omsApi.injectEndpoints({
         method: "POST",
         body: { courier, line_items },
       }),
-      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }],
+      // "orders" too — the order's own line_items[].shipments summary
+      // (grouping, coarse status/tone in the Lines card) comes from
+      // getOrder, a separate query this doesn't otherwise touch.
+      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }, "orders"],
     }),
     createManualShipment: builder.mutation({
       query: ({ orderId, awb_number, carrier_name, tracking_url, line_items }) => ({
@@ -23,7 +26,7 @@ export const fulfilmentApi = omsApi.injectEndpoints({
         method: "POST",
         body: { awb_number, carrier_name, tracking_url, line_items },
       }),
-      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }],
+      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }, "orders"],
     }),
     // Edits an already-booked shipment's carrier details/status — courier
     // and line items are fixed at creation, not editable here.
@@ -33,7 +36,7 @@ export const fulfilmentApi = omsApi.injectEndpoints({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }],
+      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }, "orders"],
     }),
   }),
 });
