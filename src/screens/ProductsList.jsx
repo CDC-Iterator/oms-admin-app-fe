@@ -71,6 +71,7 @@ function variantLabel(variant) {
 
 function MappingCell({ variant, channelKey, canManageMappings, onClick, onUnmap }) {
   const mapping = variant.mappings?.[channelKey];
+  const label = mapping && (mapping.channel_title ? `${mapping.channel_title} (${mapping.external_sku})` : mapping.external_sku);
   const content = (
     <>
       {mapping ? (
@@ -79,8 +80,8 @@ function MappingCell({ variant, channelKey, canManageMappings, onClick, onUnmap 
         <X className="size-4 shrink-0 text-muted-foreground" />
       )}
       {mapping && (
-        <span className="truncate font-mono text-xs text-muted-foreground" title={mapping.external_sku}>
-          {mapping.external_sku}
+        <span className="truncate font-mono text-xs text-muted-foreground" title={label}>
+          {label}
         </span>
       )}
     </>
@@ -177,7 +178,7 @@ function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
         <>
           <span className="font-mono text-xs">{row.external_sku}</span>
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            {row.price ? Number(row.price).toLocaleString("en-IN") : ""}
+            {row.title && row.title !== "Default Title" ? row.title : ""}
             {row.mapped_item_code && <StatusBadge tone="pending">mapped to {row.mapped_item_code}</StatusBadge>}
           </span>
         </>
