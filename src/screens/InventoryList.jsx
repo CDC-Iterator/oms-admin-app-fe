@@ -55,12 +55,23 @@ function useDebounced(value, delayMs) {
 
 function groupBySku(rows) {
   const groups = [];
-  const byItemCode = new Map();
+  // Keyed by sku_id (the variant's own pk, always present), not the
+  // item_code slug — item_code is null for a keyless variant, which would
+  // otherwise collapse every such product into one bogus group.
+  const bySkuId = new Map();
   for (const row of rows) {
-    let group = byItemCode.get(row.sku);
+    let group = bySkuId.get(row.sku_id);
     if (!group) {
-      group = { item_code: row.sku, product_title: row.product_title, rows: [], totalCommitted: 0, totalAvailable: 0, totalOnHand: 0 };
-      byItemCode.set(row.sku, group);
+      group = {
+        sku_id: row.sku_id,
+        item_code: row.sku,
+        product_title: row.product_title,
+        rows: [],
+        totalCommitted: 0,
+        totalAvailable: 0,
+        totalOnHand: 0,
+      };
+      bySkuId.set(row.sku_id, group);
       groups.push(group);
     }
     group.rows.push(row);
@@ -73,7 +84,7 @@ function groupBySku(rows) {
 
 function UnitsDrawer({ target, onOpenChange }) {
   const { data, isFetching, error } = useGetInventoryUnitsQuery(
-    target ? { sku: target.sku, location_id: target.locationId ?? undefined } : undefined,
+    target ? { sku_id: target.skuId, location_id: target.locationId ?? undefined } : undefined,
     { skip: !target }
   );
   const rows = data?.rows ?? [];
@@ -84,7 +95,9 @@ function UnitsDrawer({ target, onOpenChange }) {
           (barcode/ownership/status/qty) is cramped at the default width. */}
       <SheetContent className="data-[side=right]:sm:max-w-[33.6rem]">
         <SheetHeader>
-          <SheetTitle>Units — {target?.sku}</SheetTitle>
+          {/* item_code can be null (keyless variant) — fall back to the
+              product title so the header is never blank. */}
+          <SheetTitle>Units — {target?.itemCode ?? target?.productTitle}</SheetTitle>
           <SheetDescription>
             {target?.locationLabel ? `At ${target.locationLabel}` : "Across every location"}
           </SheetDescription>
@@ -282,7 +295,7 @@ export default function InventoryList() {
                   {groups.map((group) => {
                     const groupLevel = stockLevel(group.totalAvailable);
                     return (
-                      <Fragment key={group.item_code}>
+                      <Fragment key={group.sku_id}>
                         {/* Same 7 columns as its child rows — Item
                             code/Committed/Available/On hand here are this
                             sku's own row (item code once, not repeated per
@@ -294,7 +307,7 @@ export default function InventoryList() {
                               {group.rows.length} location{group.rows.length === 1 ? "" : "s"}
                             </StatusBadge>
                           </TableCell>
-                          <TableCell className="font-mono text-xs">{group.item_code}</TableCell>
+                          <TableCell className="font-mono text-xs">{group.item_code ?? "—"}</TableCell>
                           <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalCommitted}</TableCell>
                           <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalAvailable}</TableCell>
                           <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalOnHand}</TableCell>
@@ -305,7 +318,15 @@ export default function InventoryList() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setUnitsTarget({ sku: group.item_code, locationId: null, locationLabel: null })}
+                              onClick={() =>
+                                setUnitsTarget({
+                                  skuId: group.sku_id,
+                                  itemCode: group.item_code,
+                                  productTitle: group.product_title,
+                                  locationId: null,
+                                  locationLabel: null,
+                                })
+                              }
                             >
                               <PackageOpen className="size-3.5" />
                               Units
@@ -331,7 +352,13 @@ export default function InventoryList() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() =>
-                                    setUnitsTarget({ sku: group.item_code, locationId: row.location_id, locationLabel: row.location })
+                                    setUnitsTarget({
+                                      skuId: group.sku_id,
+                                      itemCode: group.item_code,
+                                      productTitle: group.product_title,
+                                      locationId: row.location_id,
+                                      locationLabel: row.location,
+                                    })
                                   }
                                 >
                                   <PackageOpen className="size-3.5" />
@@ -367,7 +394,7 @@ export default function InventoryList() {
                         <TableCell className="truncate text-sm" title={row.product_title}>
                           {row.product_title}
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{row.sku}</TableCell>
+                        <TableCell className="font-mono text-xs">{row.sku ?? "—"}</TableCell>
                         <TableCell className="text-center font-mono text-xs tabular-nums">{row.committed_qty}</TableCell>
                         <TableCell className="text-center font-mono text-xs tabular-nums">{row.available_qty}</TableCell>
                         <TableCell className="text-center font-mono text-xs tabular-nums">{row.on_hand_qty}</TableCell>
@@ -378,7 +405,15 @@ export default function InventoryList() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setUnitsTarget({ sku: row.sku, locationId: row.location_id, locationLabel: row.location })}
+                            onClick={() =>
+                              setUnitsTarget({
+                                skuId: row.sku_id,
+                                itemCode: row.sku,
+                                productTitle: row.product_title,
+                                locationId: row.location_id,
+                                locationLabel: row.location,
+                              })
+                            }
                           >
                             <PackageOpen className="size-3.5" />
                             Units
