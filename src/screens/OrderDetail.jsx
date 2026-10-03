@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button.jsx";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog.jsx";
 import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
 import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
@@ -23,6 +24,7 @@ import { ChannelBadge } from "@/components/ChannelBadge.jsx";
 import { EmptyState } from "@/components/empty-state.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { useAuth } from "../hooks/useAuth.js";
+import { useToast } from "../hooks/useToast.js";
 import {
   useGetOrderQuery,
   useGetSuggestedUnitQuery,
@@ -31,6 +33,7 @@ import {
 } from "../api/services/orders.js";
 import {
   useCreateManualShipmentMutation,
+  useCreateShipmentMutation,
   useGetShipmentsQuery,
   useUpdateShipmentMutation,
 } from "../api/services/fulfilment.js";
@@ -98,6 +101,31 @@ const SHIPMENT_UPDATE_OPTIONS_BY_STAGE = {
 // delivered/rto/cancelled have no further sub-choice (terminal) — shown
 // as a plain confirmation line instead of a one-item/empty dropdown.
 const TERMINAL_STAGE_LABELS = { delivered: "Delivered", rto: "RTO / delivery failed", cancelled: "Cancelled" };
+
+// Shipment.Courier choices (apps/fulfilment/models.py) — "manual" first
+// since it's the one with no parcel dimensions to fill in.
+const COURIER_OPTIONS = [
+  { value: "manual", label: "Manual" },
+  { value: "shipway", label: "Shipway" },
+  { value: "shipdelight", label: "Shipdelight" },
+  { value: "quicklee", label: "Quicklee" },
+];
+const COURIER_LABELS = Object.fromEntries(COURIER_OPTIONS.map((o) => [o.value, o.label]));
+
+// One `form` object, same shape regardless of courier — only the fields
+// a given courier's branch in handleSubmit actually reads get sent.
+const EMPTY_SHIPMENT_FORM = {
+  courier: "manual",
+  awb: "",
+  carrierName: "",
+  trackingUrl: "",
+  weightKg: "",
+  lengthCm: "",
+  breadthCm: "",
+  heightCm: "",
+  shipmentStatus: "created",
+  trackingEventStatus: "",
+};
 
 // Hidden for now, coming back later — logic/dialog stay wired up, only
 // the card itself (and its disabled state) is suppressed.
@@ -199,42 +227,53 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
   // would lock the form before the save that gets it there.
   const isLocked = isEditing && shipment?.status === "delivered";
   const [createManualShipment, { isLoading: isCreating }] = useCreateManualShipmentMutation();
+  const [createShipment, { isLoading: isBooking }] = useCreateShipmentMutation();
   const [updateShipment, { isLoading: isUpdating }] = useUpdateShipmentMutation();
-  const isSaving = isCreating || isUpdating;
+  const isSaving = isCreating || isBooking || isUpdating;
+  const { showToast } = useToast();
 
-  const [awb, setAwb] = useState("");
-  const [carrierName, setCarrierName] = useState("");
-  const [trackingUrl, setTrackingUrl] = useState("");
-  const [shipmentStatus, setShipmentStatus] = useState("created");
-  const [trackingEventStatus, setTrackingEventStatus] = useState("");
+  const [form, setForm] = useState(EMPTY_SHIPMENT_FORM);
   const [formError, setFormError] = useState(null);
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // isEditing only ever targets a manual shipment (the Lines card's pencil
+  // icon is gated on that, below) — "courier" only matters for create mode.
+  const isIntegratedCourier = !isEditing && form.courier !== "manual";
 
   // Re-seed the form from `shipment` (or blank, for create) each time the
   // dialog opens — a plain useState initializer only runs once per mount.
+  // weightKg is pre-filled from Shopify's own per-line weight_grams (a
+  // suggestion, not the packed box's real weight) — still a plain editable
+  // field, not read-only, since packaging material isn't in that sum.
   useEffect(() => {
     if (!open) return;
-    setAwb(shipment?.awb_number ?? "");
-    setCarrierName(shipment?.carrier_name ?? "");
-    setTrackingUrl(shipment?.tracking_url ?? "");
-    setShipmentStatus(shipment?.status ?? "created");
-    setTrackingEventStatus(shipment?.tracking_event_status ?? "");
+    const suggestedGrams = shippableLines.reduce((sum, li) => sum + (li.weight_grams ?? 0) * li.remaining, 0);
+    setForm({
+      ...EMPTY_SHIPMENT_FORM,
+      weightKg: suggestedGrams > 0 ? String(Math.round((suggestedGrams / 1000) * 100) / 100) : "",
+      awb: shipment?.awb_number ?? "",
+      carrierName: shipment?.carrier_name ?? "",
+      trackingUrl: shipment?.tracking_url ?? "",
+      shipmentStatus: shipment?.status ?? "created",
+      trackingEventStatus: shipment?.tracking_event_status ?? "",
+    });
     setFormError(null);
-  }, [open, shipment]);
+  }, [open, shipment, shippableLines]);
 
   // The option list re-derives from the *current* status on every render
   // — picking "In transit" from the "created" stage's list re-renders with
   // the "in_transit" stage's own (different, more specific) options.
-  const updateOptions = SHIPMENT_UPDATE_OPTIONS_BY_STAGE[shipmentStatus] ?? [];
+  const updateOptions = SHIPMENT_UPDATE_OPTIONS_BY_STAGE[form.shipmentStatus] ?? [];
   const selectedUpdateKey =
-    updateOptions.find((o) => o.status === shipmentStatus && o.trackingEventStatus === trackingEventStatus)?.key ??
+    updateOptions.find((o) => o.status === form.shipmentStatus && o.trackingEventStatus === form.trackingEventStatus)
+      ?.key ??
     updateOptions[0]?.key ??
     "";
 
   const handleUpdateChange = (key) => {
     const option = updateOptions.find((o) => o.key === key);
     if (!option) return;
-    setShipmentStatus(option.status);
-    setTrackingEventStatus(option.trackingEventStatus);
+    setForm((f) => ({ ...f, shipmentStatus: option.status, trackingEventStatus: option.trackingEventStatus }));
   };
 
   const handleSubmit = async () => {
@@ -244,21 +283,37 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
         await updateShipment({
           orderId,
           shipmentId: shipment.id,
-          awb_number: awb,
-          carrier_name: carrierName,
-          tracking_url: trackingUrl,
-          status: shipmentStatus,
-          tracking_event_status: trackingEventStatus,
+          awb_number: form.awb,
+          carrier_name: form.carrierName,
+          tracking_url: form.trackingUrl,
+          status: form.shipmentStatus,
+          tracking_event_status: form.trackingEventStatus,
         }).unwrap();
-      } else {
+      } else if (form.courier === "manual") {
         await createManualShipment({
           orderId,
-          awb_number: awb,
-          carrier_name: carrierName,
-          tracking_url: trackingUrl || undefined,
+          awb_number: form.awb,
+          carrier_name: form.carrierName,
+          tracking_url: form.trackingUrl || undefined,
           line_items: shippableLines.map((li) => ({ line_item: li.id, qty: li.remaining })),
         }).unwrap();
         onCreated?.();
+      } else {
+        // 202 Accepted — create_shipment runs the real courier call async
+        // (apps.fulfilment.tasks), so no Shipment row exists to show yet.
+        await createShipment({
+          orderId,
+          courier: form.courier,
+          line_items: shippableLines.map((li) => ({ line_item: li.id, qty: li.remaining })),
+          weight_kg: Number(form.weightKg),
+          length_cm: form.lengthCm ? Number(form.lengthCm) : undefined,
+          breadth_cm: form.breadthCm ? Number(form.breadthCm) : undefined,
+          height_cm: form.heightCm ? Number(form.heightCm) : undefined,
+        }).unwrap();
+        onCreated?.();
+        showToast(
+          `Booking with ${COURIER_LABELS[form.courier]} is in progress — it'll appear here once the courier confirms.`
+        );
       }
       onOpenChange(false);
     } catch (err) {
@@ -294,16 +349,22 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
               ) : (
                 <p className="text-sm">
                   Setting status to{" "}
-                  <span className="font-medium">{TERMINAL_STAGE_LABELS[shipmentStatus] ?? shipmentStatus}</span>.
+                  <span className="font-medium">{TERMINAL_STAGE_LABELS[form.shipmentStatus] ?? form.shipmentStatus}</span>.
                 </p>
               )}
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">
-                Courier: <span className="font-medium text-foreground">Manual</span> — Shipway/Shipdelight/Quicklee
-                are coming soon.
-              </p>
+              <div className="space-y-1">
+                <Label htmlFor="shipment-courier">Courier</Label>
+                <Select id="shipment-courier" value={form.courier} onChange={set("courier")}>
+                  {COURIER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
 
               <div className="space-y-1 rounded-lg border border-border p-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase">Shipping</p>
@@ -317,27 +378,67 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
             </>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              placeholder="AWB number"
-              value={awb}
-              onChange={(e) => setAwb(e.target.value)}
-              disabled={isLocked}
-            />
-            <Input
-              placeholder="Carrier name"
-              value={carrierName}
-              onChange={(e) => setCarrierName(e.target.value)}
-              disabled={isLocked}
-            />
-            <Input
-              placeholder="Tracking URL (optional)"
-              className="col-span-2"
-              value={trackingUrl}
-              onChange={(e) => setTrackingUrl(e.target.value)}
-              disabled={isLocked}
-            />
-          </div>
+          {(isEditing || form.courier === "manual") && (
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="AWB number" value={form.awb} onChange={set("awb")} disabled={isLocked} />
+              <Input
+                placeholder="Carrier name"
+                value={form.carrierName}
+                onChange={set("carrierName")}
+                disabled={isLocked}
+              />
+              <Input
+                placeholder="Tracking URL (optional)"
+                className="col-span-2"
+                value={form.trackingUrl}
+                onChange={set("trackingUrl")}
+                disabled={isLocked}
+              />
+            </div>
+          )}
+
+          {isIntegratedCourier && (
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Weight (kg)"
+                className="col-span-2"
+                value={form.weightKg}
+                onChange={set("weightKg")}
+              />
+              {form.weightKg && (
+                <p className="col-span-2 -mt-1 text-xs text-muted-foreground">
+                  Suggested from the order's own item weights — adjust for the actual packed box.
+                </p>
+              )}
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Length (cm, optional)"
+                value={form.lengthCm}
+                onChange={set("lengthCm")}
+              />
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Breadth (cm, optional)"
+                value={form.breadthCm}
+                onChange={set("breadthCm")}
+              />
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Height (cm, optional)"
+                value={form.heightCm}
+                onChange={set("heightCm")}
+              />
+            </div>
+          )}
 
           {formError && (
             <Alert variant="destructive">
@@ -349,7 +450,14 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
         <DialogFooter>
           <Button
             onClick={handleSubmit}
-            disabled={isLocked || isSaving || !awb || !carrierName || (!isEditing && shippableLines.length === 0)}
+            disabled={
+              isLocked ||
+              isSaving ||
+              (!isEditing && shippableLines.length === 0) ||
+              (isEditing || form.courier === "manual"
+                ? !form.awb || !form.carrierName
+                : !(Number(form.weightKg) > 0))
+            }
           >
             {isSaving ? "Saving…" : isEditing ? "Save changes" : "Book shipment"}
           </Button>

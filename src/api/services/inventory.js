@@ -16,9 +16,11 @@ export const inventoryApi = omsApi.injectEndpoints({
       query: (params) => ({ url: "/api/inventory/ledger/location-summary/", params }),
       providesTags: ["inventory"],
     }),
-    // Individual barcode-level rows — GET /api/inventory/units/?sku=
-    // (required in practice)/?location_id= (optional). Backs the Inventory
-    // screen's per-SKU "Units" drawer.
+    // Individual barcode-level rows — GET /api/inventory/units/?sku_id=
+    // (required in practice; item_code is null for a keyless variant, so
+    // the variant's own id is the only filter that always works)/
+    // ?location_id= (optional). Backs the Inventory screen's per-SKU
+    // "Units" drawer.
     getInventoryUnits: builder.query({
       query: (params) => ({ url: "/api/inventory/units/", params }),
       transformResponse: unwrapList,

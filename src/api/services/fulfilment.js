@@ -1,8 +1,10 @@
 import { omsApi } from "../omsApiBase.js";
 
 // apps.fulfilment — Shipment/ShipmentLineItem, mounted under /api/orders/.
-// courier="manual" is the only path with a real connector today; the three
-// integrated couriers (shipway/shipdelight/quicklee) are stubs on the backend.
+// All four couriers (shipway/shipdelight/quicklee/manual) have real backend
+// connectors now (CDC-78/79/80) — createShipment books an integrated
+// courier (202, async — the Shipment row lands once the courier confirms),
+// createManualShipment is the synchronous carrier-outside-the-three path.
 export const fulfilmentApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
     getShipments: builder.query({
@@ -10,10 +12,10 @@ export const fulfilmentApi = omsApi.injectEndpoints({
       providesTags: (result, error, orderId) => [{ type: "shipments", id: orderId }],
     }),
     createShipment: builder.mutation({
-      query: ({ orderId, courier, line_items }) => ({
+      query: ({ orderId, courier, line_items, weight_kg, length_cm, breadth_cm, height_cm }) => ({
         url: `/api/orders/${orderId}/shipments/`,
         method: "POST",
-        body: { courier, line_items },
+        body: { courier, line_items, weight_kg, length_cm, breadth_cm, height_cm },
       }),
       // "orders" too — the order's own line_items[].shipments summary
       // (grouping, coarse status/tone in the Lines card) comes from
