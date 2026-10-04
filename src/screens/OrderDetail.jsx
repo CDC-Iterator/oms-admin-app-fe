@@ -215,6 +215,20 @@ function SuggestedUnitCell({ orderId, orderStatus, lineItem }) {
   );
 }
 
+// One combined box suggestion across every selected line's own Packaging
+// (Product.packaging, apps/catalog) — max per dimension, not a sum, since
+// items share one physical box rather than stacking their boxes end to
+// end. Lines with no packaging assigned yet are just skipped.
+function suggestPackagingDims(shippableLines) {
+  const packagings = shippableLines.map((li) => li.packaging).filter(Boolean);
+  if (packagings.length === 0) return null;
+  return {
+    length_cm: Math.max(...packagings.map((p) => Number(p.length_cm))),
+    breadth_cm: Math.max(...packagings.map((p) => Number(p.breadth_cm))),
+    height_cm: Math.max(...packagings.map((p) => Number(p.height_cm))),
+  };
+}
+
 // Create/edit modal for a single shipment. `shipment` present → edit
 // (courier/line items fixed, only carrier details + status change);
 // `shipment` absent → create (manual courier only). `shippableLines` in
@@ -242,15 +256,20 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
 
   // Re-seed the form from `shipment` (or blank, for create) each time the
   // dialog opens — a plain useState initializer only runs once per mount.
-  // weightKg is pre-filled from Shopify's own per-line weight_grams (a
-  // suggestion, not the packed box's real weight) — still a plain editable
-  // field, not read-only, since packaging material isn't in that sum.
+  // weightKg/dims are pre-filled suggestions (Shopify's per-line
+  // weight_grams; each line's own Packaging for L/B/H) — still plain
+  // editable fields, not read-only, since the packed box can legitimately
+  // differ from either source.
   useEffect(() => {
     if (!open) return;
     const suggestedGrams = shippableLines.reduce((sum, li) => sum + (li.weight_grams ?? 0) * li.remaining, 0);
+    const suggestedDims = suggestPackagingDims(shippableLines);
     setForm({
       ...EMPTY_SHIPMENT_FORM,
       weightKg: suggestedGrams > 0 ? String(Math.round((suggestedGrams / 1000) * 100) / 100) : "",
+      lengthCm: suggestedDims ? String(suggestedDims.length_cm) : "",
+      breadthCm: suggestedDims ? String(suggestedDims.breadth_cm) : "",
+      heightCm: suggestedDims ? String(suggestedDims.height_cm) : "",
       awb: shipment?.awb_number ?? "",
       carrierName: shipment?.carrier_name ?? "",
       trackingUrl: shipment?.tracking_url ?? "",
@@ -408,9 +427,10 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
                 value={form.weightKg}
                 onChange={set("weightKg")}
               />
-              {form.weightKg && (
+              {(form.weightKg || form.lengthCm) && (
                 <p className="col-span-2 -mt-1 text-xs text-muted-foreground">
-                  Suggested from the order's own item weights — adjust for the actual packed box.
+                  Weight suggested from the order's own item weights, box size from each item's packaging —
+                  adjust for the actual packed box.
                 </p>
               )}
               <Input
