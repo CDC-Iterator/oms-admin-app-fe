@@ -234,7 +234,10 @@ function suggestPackagingDims(shippableLines) {
 // `shipment` absent → create (manual courier only). `shippableLines` in
 // create mode is the *already-made* selection from the Lines card's own
 // checkboxes — this dialog just confirms/books it, it isn't a picker.
-function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange, onCreated }) {
+function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, open, onOpenChange, onCreated }) {
+  // Only couriers the order's allocated_location is actually configured for
+  // (warehouse_id/address on file) — "manual" always qualifies.
+  const courierOptions = COURIER_OPTIONS.filter((o) => (availableCouriers ?? ["manual"]).includes(o.value));
   const isEditing = Boolean(shipment);
   // Delivered is terminal — the shipment as it stood when the dialog
   // opened, never the in-progress dropdown pick, or setting *to* delivered
@@ -377,7 +380,7 @@ function ShipmentDialog({ orderId, shipment, shippableLines, open, onOpenChange,
               <div className="space-y-1">
                 <Label htmlFor="shipment-courier">Courier</Label>
                 <Select id="shipment-courier" value={form.courier} onChange={set("courier")}>
-                  {COURIER_OPTIONS.map((o) => (
+                  {courierOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -820,6 +823,7 @@ export default function OrderDetail() {
           orderId={order.id}
           shipment={dialogTarget && dialogTarget.id ? dialogTarget : null}
           shippableLines={dialogTarget && dialogTarget.id ? [] : selectedShippableLines}
+          availableCouriers={order.available_couriers}
           open={Boolean(dialogTarget)}
           onOpenChange={(open) => !open && setDialogTarget(null)}
           onCreated={() => setSelectedLineIds(new Set())}
