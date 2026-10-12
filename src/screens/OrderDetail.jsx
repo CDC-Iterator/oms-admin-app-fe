@@ -776,6 +776,10 @@ export default function OrderDetail() {
                   </p>
                 </div>
                 <div>
+                  <p className="text-xs text-muted-foreground uppercase">Delivery method</p>
+                  <p>{order.delivery_method || "—"}</p>
+                </div>
+                <div>
                   <p className="text-xs text-muted-foreground uppercase">Allocated location</p>
                   <p className="font-mono">{order.allocated_location || "—"}</p>
                 </div>

@@ -27,7 +27,7 @@ const CHANNELS = [
   { value: "pos", label: "POS" },
 ];
 
-const COLUMN_COUNT = 9;
+const COLUMN_COUNT = 10;
 
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
@@ -255,6 +255,7 @@ export default function OrdersList() {
                 <TableHead className="h-8 border-b-2 border-border text-center">Total</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Payment</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Fulfillment</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Delivery</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Destination</TableHead>
               </TableRow>
             </TableHeader>
@@ -296,6 +297,7 @@ export default function OrdersList() {
                       <TableCell className="py-1.5">
                         <StatusBadge tone={fulfillmentTone(row.fulfillment_status)}>{row.fulfillment_status}</StatusBadge>
                       </TableCell>
+                      <TableCell className="py-1.5 text-sm">{row.delivery_method || "—"}</TableCell>
                       <TableCell className="py-1.5 text-sm">{destination || "—"}</TableCell>
                     </TableRow>
                     {isExpanded && <LineItemsRow orderId={row.id} />}
