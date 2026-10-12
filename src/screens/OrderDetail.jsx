@@ -776,6 +776,10 @@ export default function OrderDetail() {
                   </p>
                 </div>
                 <div>
+                  <p className="text-xs text-muted-foreground uppercase">Invoice ID</p>
+                  <p className="font-mono">{order.invoice_id || "—"}</p>
+                </div>
+                <div>
                   <p className="text-xs text-muted-foreground uppercase">Delivery method</p>
                   <p>{order.delivery_method || "—"}</p>
                 </div>
