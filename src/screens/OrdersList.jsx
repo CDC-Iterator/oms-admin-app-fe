@@ -27,7 +27,7 @@ const CHANNELS = [
   { value: "pos", label: "POS" },
 ];
 
-const COLUMN_COUNT = 9;
+const COLUMN_COUNT = 11;
 
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
@@ -249,12 +249,14 @@ export default function OrdersList() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-8 w-8 border-b-2 border-border" />
                 <TableHead className="h-8 border-b-2 border-border">Order</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Invoice</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Date</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Channel</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Customer</TableHead>
                 <TableHead className="h-8 border-b-2 border-border text-center">Total</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Payment</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Fulfillment</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Delivery</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Destination</TableHead>
               </TableRow>
             </TableHeader>
@@ -276,6 +278,7 @@ export default function OrdersList() {
                           {row.order_name || row.external_order_id}
                         </Link>
                       </TableCell>
+                      <TableCell className="py-1.5 font-mono text-xs">{row.invoice_id || "—"}</TableCell>
                       <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">
                         {row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"}
                       </TableCell>
@@ -296,6 +299,7 @@ export default function OrdersList() {
                       <TableCell className="py-1.5">
                         <StatusBadge tone={fulfillmentTone(row.fulfillment_status)}>{row.fulfillment_status}</StatusBadge>
                       </TableCell>
+                      <TableCell className="py-1.5 text-sm">{row.delivery_method || "—"}</TableCell>
                       <TableCell className="py-1.5 text-sm">{destination || "—"}</TableCell>
                     </TableRow>
                     {isExpanded && <LineItemsRow orderId={row.id} />}
