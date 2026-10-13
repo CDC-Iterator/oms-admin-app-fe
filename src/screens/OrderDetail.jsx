@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Ban, PackageCheck, Pencil, Plus, RefreshCw, Undo2 } from "lucide-react";
+import { ArrowLeft, Ban, Pencil, Plus, RefreshCw, Undo2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
@@ -23,6 +23,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChannelBadge } from "@/components/ChannelBadge.jsx";
 import { EmptyState } from "@/components/empty-state.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
+import { LineActionDialog } from "@/components/LineActionDialog.jsx";
+import { LineActionsCard } from "@/components/LineActionsCard.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
 import {
@@ -134,7 +136,6 @@ const ORDER_EVENTS_ENABLED = false;
 const EVENT_MODES = {
   cancelled: { label: "Cancel order", verb: "Cancel", icon: Ban, description: "The reserved unit is released back into the ledger. This can't be undone." },
   returned: { label: "Mark returned", verb: "Return", icon: Undo2, description: "The unit rejoins the same ledger it left — availability corrects across every channel." },
-  rto: { label: "Mark RTO", verb: "RTO", icon: PackageCheck, description: "Return-to-origin: the unit restocks at its original location." },
 };
 
 // Groups the Lines card the way Shopify's own order page does — one
@@ -499,6 +500,8 @@ export default function OrderDetail() {
   const [postEvent, { isLoading: isPosting }] = usePostOrderEventMutation();
   const [confirmMode, setConfirmMode] = useState(null);
   const [eventError, setEventError] = useState(null);
+  // { orderId, line, action } while the per-line cancel/return dialog is open.
+  const [lineActionTarget, setLineActionTarget] = useState(null);
 
   const { data: shipments } = useGetShipmentsQuery(order?.id, { skip: !order });
 
@@ -673,11 +676,12 @@ export default function OrderDetail() {
                       <Table className="table-fixed">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[28%]">SKU</TableHead>
-                            <TableHead className="w-[18%]">External SKU</TableHead>
-                            <TableHead className="w-[10%] text-right">Qty</TableHead>
-                            <TableHead className="w-[12%] text-right">Price</TableHead>
-                            <TableHead className="w-[32%]">Suggested / reserved unit</TableHead>
+                            <TableHead className="w-[24%]">SKU</TableHead>
+                            <TableHead className="w-[15%]">External SKU</TableHead>
+                            <TableHead className="w-[8%] text-right">Qty</TableHead>
+                            <TableHead className="w-[10%] text-right">Price</TableHead>
+                            <TableHead className="w-[25%]">Suggested / reserved unit</TableHead>
+                            <TableHead className="w-[18%]" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -707,6 +711,28 @@ export default function OrderDetail() {
                               <TableCell>
                                 <SuggestedUnitCell orderId={id} orderStatus={order.status} lineItem={line} />
                               </TableCell>
+                              <TableCell className="text-right">
+                                {isAdmin && !group.shipmentRef && line.can_cancel && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setLineActionTarget({ orderId: id, line, action: "cancel" })}
+                                  >
+                                    <Ban className="size-3.5" />
+                                    Cancel
+                                  </Button>
+                                )}
+                                {isAdmin && group.shipmentRef?.status === "delivered" && line.can_return && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setLineActionTarget({ orderId: id, line, action: "return" })}
+                                  >
+                                    <Undo2 className="size-3.5" />
+                                    Return
+                                  </Button>
+                                )}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -716,6 +742,8 @@ export default function OrderDetail() {
                 })}
               </CardContent>
             </Card>
+
+            <LineActionsCard lineItems={lineItems} isAdmin={isAdmin} />
           </div>
 
           <div className="space-y-4">
@@ -837,6 +865,12 @@ export default function OrderDetail() {
           onCreated={() => setSelectedLineIds(new Set())}
         />
       )}
+
+      <LineActionDialog
+        key={lineActionTarget ? `${lineActionTarget.line.id}-${lineActionTarget.action}` : "closed"}
+        target={lineActionTarget}
+        onClose={() => setLineActionTarget(null)}
+      />
 
       <AlertDialog open={Boolean(confirmMode)} onOpenChange={(open) => !open && setConfirmMode(null)}>
         <AlertDialogContent>
