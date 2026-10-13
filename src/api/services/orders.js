@@ -29,6 +29,20 @@ export const ordersApi = omsApi.injectEndpoints({
       query: ({ id, event_type }) => ({ url: `/api/orders/${id}/events/`, method: "POST", body: { event_type } }),
       invalidatesTags: ["orders", "inventory"],
     }),
+    // Per-line cancel/return — the backend enforces eligibility (400 with a detail message).
+    postLineAction: builder.mutation({
+      query: ({ orderId, lineItemId, body }) => ({
+        url: `/api/orders/${orderId}/line-items/${lineItemId}/actions/`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["orders", "inventory"],
+    }),
+    // Re-runs whichever of the Shopify/POS pushes hasn't succeeded yet.
+    retryLineAction: builder.mutation({
+      query: (id) => ({ url: `/api/orders/line-actions/${id}/retry/`, method: "POST" }),
+      invalidatesTags: ["orders"],
+    }),
     getSuggestedUnit: builder.query({
       query: ({ orderId, lineItemId }) => ({
         url: `/api/orders/${orderId}/line-items/${lineItemId}/suggested-unit/`,
@@ -50,6 +64,8 @@ export const {
   useGetOrderQuery,
   useGetOrderStatusSummaryQuery,
   usePostOrderEventMutation,
+  usePostLineActionMutation,
+  useRetryLineActionMutation,
   useGetSuggestedUnitQuery,
   useRefreshSuggestedUnitMutation,
 } = ordersApi;
