@@ -158,7 +158,7 @@ export default function FulfillmentLines() {
           aria-busy={isFetching}
           className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1"
         >
-          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
+          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[3%] border-b-2 border-border">
