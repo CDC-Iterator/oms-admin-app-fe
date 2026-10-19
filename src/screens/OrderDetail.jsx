@@ -195,7 +195,9 @@ function SuggestedUnitCell({ orderId, orderStatus, lineItem }) {
   const [refresh, { isLoading: isRefreshing }] = useRefreshSuggestedUnitMutation();
 
   if (fullyConfirmed) {
-    return <StatusBadge tone="success">Confirmed · {confirmedUnits.join(", ")}</StatusBadge>;
+    const locations = lineItem.confirmed_unit_locations ?? [];
+    const label = confirmedUnits.map((barcode, i) => (locations[i] ? `${barcode} @ ${locations[i]}` : barcode)).join(", ");
+    return <StatusBadge tone="success">Confirmed · {label}</StatusBadge>;
   }
   if (!showSuggestion) {
     return <span className="text-xs text-muted-foreground">No unit assigned</span>;
