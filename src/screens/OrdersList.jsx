@@ -45,10 +45,10 @@ const COLUMNS = [
   { id: "invoice", header: "Invoice", size: 9, enableSorting: false },
   { id: "placed_at", header: "Date", size: 11.5 },
   { id: "channel", header: "Channel", size: 7, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
-  { id: "customer", header: "Customer", size: 12 },
+  { id: "customer", header: "Customer", size: 12, enableSorting: false },
   { id: "total", header: "Total", size: 6.5, align: "right" },
-  { id: "payment", header: "Payment", size: 11, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status" } },
-  { id: "fulfillment", header: "Fulfillment", size: 13, meta: { filterOptions: FULFILLMENT_STATUSES, filterParam: "fulfillment_status" } },
+  { id: "payment", header: "Payment", size: 11, enableSorting: false, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status" } },
+  { id: "fulfillment", header: "Fulfillment", size: 13, enableSorting: false, meta: { filterOptions: FULFILLMENT_STATUSES, filterParam: "fulfillment_status" } },
   { id: "delivery", header: "Delivery", size: 9.5, enableSorting: false },
   { id: "destination", header: "Destination", size: 10, enableSorting: false },
 ];
