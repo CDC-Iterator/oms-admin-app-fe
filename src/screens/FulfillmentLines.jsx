@@ -1,17 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PackageCheck } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
+import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { LineProduct } from "../components/LineProduct.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
-import { Checkbox } from "@/components/ui/checkbox.jsx";
 import { Input } from "@/components/ui/input.jsx";
-import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetInventoryLocationSummaryQuery } from "../api/services/inventory.js";
@@ -22,9 +21,9 @@ import { formatPlacedDate } from "../lib/utils.js";
 
 const PAGE_SIZE = 50;
 const COLUMNS = [
+  { id: "item_code", header: "Item" },
   { id: "order", header: "Order" },
   { id: "placed_at", header: "Date" },
-  { id: "item_code", header: "Item" },
 ];
 
 function useDebounced(value, delayMs) {
@@ -42,8 +41,25 @@ export default function FulfillmentLines() {
   const debouncedSearch = useDebounced(search, 300);
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const locationId = searchParams.get("location_id") || "";
-  const { table, orderingParam } = useServerColumns({ columns: COLUMNS, defaultOrdering: "-placed_at" });
+  const { data: locations } = useGetInventoryLocationSummaryQuery({});
+  const columns = useMemo(
+    () => [
+      ...COLUMNS,
+      {
+        id: "allocated_location",
+        enableSorting: false,
+        meta: {
+          filterParam: "allocated_location_id",
+          filterOptions: (locations ?? []).map((l) => ({ value: String(l.location_id), label: l.location })),
+        },
+      },
+    ],
+    [locations]
+  );
+  const { table, orderingParam, filterParams, activeFilters, clearFilters } = useServerColumns({
+    columns,
+    defaultOrdering: "-placed_at",
+  });
 
   const updateParams = (updates) =>
     setSearchParams(
@@ -59,11 +75,10 @@ export default function FulfillmentLines() {
     );
   const setPage = (nextPage) => updateParams({ page: nextPage <= 1 ? null : nextPage });
 
-  const { data: locations } = useGetInventoryLocationSummaryQuery({});
   const { data, isFetching, error, refetch } = useGetFulfillmentLinesQuery({
     page,
     search: debouncedSearch || undefined,
-    location_id: locationId || undefined,
+    ...filterParams,
     ordering: orderingParam,
   });
   const rows = data?.rows ?? [];
@@ -105,14 +120,11 @@ export default function FulfillmentLines() {
           }}
           className="min-w-48 flex-1"
         />
-        <Select value={locationId} onChange={(e) => updateParams({ location_id: e.target.value, page: null })}>
-          <option value="">All locations</option>
-          {(locations ?? []).map((l) => (
-            <option key={l.location_id} value={l.location_id}>
-              {l.location}
-            </option>
-          ))}
-        </Select>
+        {activeFilters > 0 && (
+          <Button size="sm" variant="outline" onClick={clearFilters}>
+            Clear filter
+          </Button>
+        )}
       </div>
 
       {selected.size > 0 && (
@@ -135,7 +147,7 @@ export default function FulfillmentLines() {
         </Alert>
       ) : isFetching && !data ? (
         <Skeleton className="h-64 w-full" />
-      ) : rows.length === 0 ? (
+      ) : rows.length === 0 && activeFilters === 0 ? (
         <EmptyState
           icon={PackageCheck}
           title="Nothing to fulfil"
@@ -150,7 +162,16 @@ export default function FulfillmentLines() {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[3%] border-b-2 border-border">
-                  <Checkbox checked={pageSelected} onCheckedChange={togglePage} aria-label="Select all lines on this page" />
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={pageSelected}
+                    onChange={togglePage}
+                    aria-label="Select all lines on this page"
+                  />
+                </TableHead>
+                <TableHead className="w-[33%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("item_code")} title="Item" />
                 </TableHead>
                 <TableHead className="w-[9%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("order")} title="Order" />
@@ -159,23 +180,28 @@ export default function FulfillmentLines() {
                 <TableHead className="w-[11%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
-                <TableHead className="w-[33%] border-b-2 border-border">
-                  <ColumnHeader column={table.getColumn("item_code")} title="Item" />
-                </TableHead>
                 <TableHead className="w-[4%] border-b-2 border-border text-center">Qty</TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">Barcode</TableHead>
-                <TableHead className="w-[16%] border-b-2 border-border">Allocated location</TableHead>
+                <TableHead className="w-[13%] border-b-2 border-border">Barcode</TableHead>
+                <TableHead className="w-[15%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("allocated_location")} title="Allocated location" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
+              {rows.length === 0 && <TableEmptyRow colSpan={8} />}
               {rows.map((row) => (
                 <TableRow key={row.line_id} data-state={selected.has(row.line_id) ? "selected" : undefined}>
                   <TableCell>
-                    <Checkbox
+                    <input
+                      type="checkbox"
+                      className="size-4"
                       checked={selected.has(row.line_id)}
-                      onCheckedChange={() => toggle(row.line_id)}
+                      onChange={() => toggle(row.line_id)}
                       aria-label={`Select ${row.order_name} ${row.external_sku}`}
                     />
+                  </TableCell>
+                  <TableCell>
+                    <LineProduct line={row} layout="card" />
                   </TableCell>
                   <TableCell className="font-mono">
                     <Link to={`/orders/${row.order_id}`} className="text-primary hover:underline" title={row.customer_name}>
@@ -186,9 +212,6 @@ export default function FulfillmentLines() {
                     {row.invoice_id || "—"}
                   </TableCell>
                   <TableCell className="truncate">{formatPlacedDate(row.placed_at)}</TableCell>
-                  <TableCell>
-                    <LineProduct line={row} layout="card" />
-                  </TableCell>
                   <TableCell className="text-center font-mono tabular-nums">{row.qty}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
