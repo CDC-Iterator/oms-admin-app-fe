@@ -288,7 +288,7 @@ export default function OrdersList() {
                       </TableCell>
                       <TableCell className="py-1.5 font-mono text-xs">{row.invoice_id || "—"}</TableCell>
                       <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">
-                        {row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"}
+                        {row.placed_at || row.created_at ? new Date(row.placed_at ?? row.created_at).toLocaleDateString() : "—"}
                       </TableCell>
                       <TableCell className="py-1.5">
                         <ChannelBadge channel={row.channel} />

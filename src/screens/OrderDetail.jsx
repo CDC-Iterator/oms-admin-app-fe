@@ -23,6 +23,7 @@ import { ChannelBadge } from "@/components/ChannelBadge.jsx";
 import { EmptyState } from "@/components/empty-state.jsx";
 import { OrderAppBar } from "../components/OrderAppBar.jsx";
 import { OrderLinesSection } from "../components/OrderLinesSection.jsx";
+import { PaymentSummaryCard } from "../components/PaymentSummaryCard.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { LineActionDialog } from "@/components/LineActionDialog.jsx";
 import { LineActionsCard } from "@/components/LineActionsCard.jsx";
@@ -173,7 +174,10 @@ function groupLinesByShipment(lineItems, channelFulfillments = []) {
     entries: f.line_items.map(({ line_item, qty }) => ({ line: linesById.get(line_item), qty })).filter((e) => e.line),
   }));
   const fulfilledGroups = [...shipmentGroups, ...channelGroups];
-  return unfulfilled.entries.length > 0 ? [unfulfilled, ...fulfilledGroups] : fulfilledGroups;
+  // Units taken off the order on the channel (an edit or a cancellation) — Shopify lists them under "Removed".
+  const removedEntries = lineItems.filter((li) => (li.removed_qty ?? 0) > 0).map((li) => ({ line: li, qty: li.removed_qty }));
+  const removed = removedEntries.length > 0 ? [{ key: "removed", removed: true, shipmentRef: null, channelRef: null, entries: removedEntries }] : [];
+  return [...(unfulfilled.entries.length > 0 ? [unfulfilled] : []), ...fulfilledGroups, ...removed];
 }
 
 // A line's `qty` can need more than one physical unit (many-to-many
@@ -640,7 +644,7 @@ export default function OrderDetail() {
                   {order.order_name || order.external_order_id}
                 </CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground font-mono">
-                  Placed {new Date(order.created_at).toLocaleString()}
+                  Placed {new Date(order.placed_at ?? order.created_at).toLocaleString()}
                 </p>
                 <CardAction className="flex flex-wrap items-center gap-1.5">
                   <ChannelBadge channel={order.channel} />
@@ -669,47 +673,12 @@ export default function OrderDetail() {
               trackingEventLabels={TRACKING_EVENT_LABELS}
             />
 
+            <PaymentSummaryCard order={order} />
+
             <LineActionsCard lineItems={lineItems} isAdmin={isAdmin} />
           </div>
 
           <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  {order.payment_status === "paid" ? "Paid" : "Order summary"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5 text-sm">
-                {[
-                  ["Subtotal", order.order_summary?.subtotal],
-                  ["Shipping", order.order_summary?.shipping],
-                  ["Taxes", order.order_summary?.tax],
-                  ["Discount", order.order_summary?.discount],
-                ].map(([label, value]) =>
-                  value == null ? null : (
-                    <div key={label} className="flex items-center justify-between text-muted-foreground">
-                      <span>{label}</span>
-                      <span className="font-mono tabular-nums">{Number(value).toLocaleString("en-IN")}</span>
-                    </div>
-                  )
-                )}
-                <div className="flex items-center justify-between border-t border-border pt-1.5 font-medium">
-                  <span>Total</span>
-                  <span className="font-mono tabular-nums">
-                    {Number(order.order_summary?.total ?? order.total_amount ?? 0).toLocaleString("en-IN")}
-                  </span>
-                </div>
-                {order.order_summary?.paid != null && (
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span>Paid</span>
-                    <span className="font-mono tabular-nums">
-                      {Number(order.order_summary.paid).toLocaleString("en-IN")}
-                    </span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">Customer</CardTitle>

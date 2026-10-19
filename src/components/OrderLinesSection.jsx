@@ -42,7 +42,7 @@ function LocationPill({ name }) {
 
 function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox, selected, onToggle, renderUnit, onLineAction }) {
   const { line, qty } = entry;
-  const isOpen = !group.shipmentRef && !group.channelRef;
+  const isOpen = !group.shipmentRef && !group.channelRef && !group.removed;
   const canCancel = isAdmin && isOpen && line.can_cancel;
   const canReturn = isAdmin && group.shipmentRef?.status === "delivered" && line.can_return;
   const hasUnit = isOpen;
@@ -132,6 +132,30 @@ export function OrderLinesSection({
       <h2 className="text-lg font-semibold">Lines</h2>
 
       {lineGroups.map((group) => {
+        if (group.removed) {
+          return (
+            <div key={group.key} className="space-y-2">
+              <h3 className="text-base font-semibold">Removed</h3>
+              <div className="rounded-2xl bg-card p-4 shadow-xs ring-1 ring-border">
+                {group.entries.map((entry) => (
+                  <LineRow
+                    key={`${group.key}-${entry.line.id}`}
+                    entry={entry}
+                    group={group}
+                    orderId={orderId}
+                    isAdmin={isAdmin}
+                    checkboxColumn={false}
+                    showCheckbox={false}
+                    selected={false}
+                    onToggle={onToggleLine}
+                    renderUnit={renderUnit}
+                    onLineAction={onLineAction}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        }
         const ref = group.shipmentRef;
         const channel = group.channelRef;
         const isOpen = !ref && !channel;
