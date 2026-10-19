@@ -4,7 +4,9 @@ import { useSearchParams } from "react-router-dom";
 
 // Column sort/filter state for a server-paginated list, kept in the URL.
 // Column ids are the backend's ?ordering= keys; `meta.filterParam` names a column's filter param.
-export function useServerColumns({ columns, defaultOrdering }) {
+export function useServerColumns({ columns: definitions, defaultOrdering }) {
+  // TanStack only treats a column as sortable when it has an accessor; the rows aren't ours, so a no-op one will do.
+  const columns = useMemo(() => definitions.map((c) => ({ accessorFn: () => null, ...c })), [definitions]);
   const [searchParams, setSearchParams] = useSearchParams();
   const ordering = searchParams.get("ordering") || defaultOrdering;
   const filterColumns = useMemo(() => columns.filter((c) => c.meta?.filterParam), [columns]);
