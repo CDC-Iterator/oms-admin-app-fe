@@ -308,7 +308,7 @@ export default function InventoryList() {
               capped at 40% (Product/Location here, Product in the flat
               layout below), long content truncated with an ellipsis
               instead of overflowing or wrapping the row taller. */}
-          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
+          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             {locationId === null ? (
               <>
                 <TableHeader>

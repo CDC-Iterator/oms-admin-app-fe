@@ -427,7 +427,7 @@ export default function ProductsList() {
         // this arbitrary-child selector), not on an extra wrapper here,
         // or the header has nothing to actually stick within.
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1">
-          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
+          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             {/* Border lives on each <th> (a <tr>'s own border-bottom is
                 only honored under border-collapse:collapse, which this
                 table doesn't use — a per-cell border always renders). */}

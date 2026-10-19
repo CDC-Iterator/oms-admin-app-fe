@@ -299,7 +299,7 @@ export default function OrdersList() {
                   <TableHead
                     key={header.id}
                     style={{ width: `${header.column.columnDef.size}%` }}
-                    className={"h-7 shadow-[inset_0_-1px_0_0_var(--border)]" + (header.column.columnDef.align === "right" ? " text-right" : "")}
+                    className={"h-10 shadow-[inset_0_-1px_0_0_var(--border)]" + (header.column.columnDef.align === "right" ? " text-right" : "")}
                   >
                     {header.column.columnDef.header && (
                       <ColumnHeader
