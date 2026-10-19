@@ -153,8 +153,8 @@ function groupLinesByShipment(lineItems, channelFulfillments = []) {
   for (const li of lineItems) {
     const refs = li.shipments ?? [];
     const shippedQty = refs.reduce((sum, s) => sum + s.qty, 0);
-    // Units the sales channel (Shopify) already shows as fulfilled outside the OMS's own shipments.
-    const remaining = li.qty - shippedQty - (li.channel_fulfilled_qty ?? 0);
+    // Minus what the channel already fulfilled outside the OMS, and what an edit or cancel took off the order.
+    const remaining = li.qty - shippedQty - (li.channel_fulfilled_qty ?? 0) - (li.removed_qty ?? 0);
     if (remaining > 0) {
       unfulfilled.entries.push({ line: li, qty: remaining });
     }
@@ -562,14 +562,14 @@ export default function OrderDetail() {
             (li) =>
               !li.is_dropship &&
               (!REQUIRE_CONFIRMED_UNIT || li.is_fully_confirmed) &&
-              li.qty - (shippedByLine[li.id] ?? 0) - (li.channel_fulfilled_qty ?? 0) > 0
+              li.qty - (shippedByLine[li.id] ?? 0) - (li.channel_fulfilled_qty ?? 0) - (li.removed_qty ?? 0) > 0
           )
           .map((li) => li.id)
       : []
   );
   const selectedShippableLines = lineItems
     .filter((li) => selectedLineIds.has(li.id))
-    .map((li) => ({ ...li, remaining: li.qty - (shippedByLine[li.id] ?? 0) - (li.channel_fulfilled_qty ?? 0) }));
+    .map((li) => ({ ...li, remaining: li.qty - (shippedByLine[li.id] ?? 0) - (li.channel_fulfilled_qty ?? 0) - (li.removed_qty ?? 0) }));
   const shipmentById = new Map((shipments ?? []).map((s) => [s.id, s]));
   const lineGroups = groupLinesByShipment(lineItems, order?.channel_fulfillments ?? []);
 
