@@ -22,7 +22,7 @@ import { formatPlacedDate } from "../lib/utils.js";
 const PAGE_SIZE = 50;
 const COLUMNS = [
   { id: "item_code", header: "Item" },
-  { id: "order", header: "Order" },
+  { id: "order", header: "Order", meta: { filterIds: true, filterParam: "order_ids" } },
   { id: "placed_at", header: "Date" },
 ];
 

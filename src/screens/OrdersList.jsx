@@ -41,7 +41,7 @@ const FULFILLMENT_STATUSES = ["unfulfilled", "partial", "fulfilled", "restocked"
 // TanStack column ids are the backend's ?ordering= keys / filter params (apps.orders.views).
 const COLUMNS = [
   { id: "expand", header: "", size: 2.5, enableSorting: false },
-  { id: "order", header: "Order", size: 8 },
+  { id: "order", header: "Order", size: 8, meta: { filterIds: true, filterParam: "order_ids" } },
   { id: "invoice", header: "Invoice", size: 9, enableSorting: false },
   { id: "placed_at", header: "Date", size: 11.5 },
   { id: "channel", header: "Channel", size: 7, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
