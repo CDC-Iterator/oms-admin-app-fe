@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useState } from "react";
-import { ArrowDown, ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
+import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { FulfilledByBadge } from "../components/FulfilledByBadge.jsx";
 import { LineProduct } from "../components/LineProduct.jsx";
@@ -11,7 +13,6 @@ import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
-import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
@@ -24,13 +25,33 @@ const PAGE_SIZE = 50;
 
 // Order.channel choices — apps.channels.models.
 const CHANNELS = [
-  { value: "", label: "All channels" },
   { value: "shopify", label: "Shopify" },
   { value: "tatacliq", label: "TataCliq" },
   { value: "pos", label: "POS" },
 ];
 
-const COLUMN_COUNT = 11;
+const PAYMENT_STATUSES = ["paid", "partially_paid", "pending", "refunded", "partially_refunded", "voided"].map((v) => ({
+  value: v,
+  label: v.replace("_", " "),
+}));
+const FULFILLMENT_STATUSES = ["unfulfilled", "partial", "fulfilled", "restocked"].map((v) => ({ value: v, label: v }));
+
+// TanStack column ids are the backend's ?ordering= keys / filter params (apps.orders.views).
+const COLUMNS = [
+  { id: "expand", header: "", size: 2.5, enableSorting: false },
+  { id: "order", header: "Order", size: 8 },
+  { id: "invoice", header: "Invoice", size: 9, enableSorting: false },
+  { id: "placed_at", header: "Date", size: 11.5 },
+  { id: "channel", header: "Channel", size: 7, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
+  { id: "customer", header: "Customer", size: 12 },
+  { id: "total", header: "Total", size: 6.5, align: "right" },
+  { id: "payment", header: "Payment", size: 11, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status" } },
+  { id: "fulfillment", header: "Fulfillment", size: 13, meta: { filterOptions: FULFILLMENT_STATUSES, filterParam: "fulfillment_status" } },
+  { id: "delivery", header: "Delivery", size: 9.5, enableSorting: false },
+  { id: "destination", header: "Destination", size: 10, enableSorting: false },
+];
+const COLUMN_COUNT = COLUMNS.length;
+const DEFAULT_ORDERING = "-placed_at";
 
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
@@ -107,7 +128,6 @@ function LineItemsRow({ orderId }) {
 }
 
 export default function OrdersList() {
-  const [channel, setChannel] = useState("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 300);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
@@ -118,6 +138,10 @@ export default function OrdersList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
   const status = searchParams.get("status") || "";
+  const ordering = searchParams.get("ordering") || DEFAULT_ORDERING;
+  const channel = searchParams.get("channel") || "";
+  const paymentStatus = searchParams.get("payment_status") || "";
+  const fulfillmentStatus = searchParams.get("fulfillment_status") || "";
 
   const updateParams = (updates) => {
     setSearchParams(
@@ -143,10 +167,6 @@ export default function OrdersList() {
   // the first run" guard), clobbering ?page=/?status= from a
   // refreshed/shared URL.
   const handleStatusChange = (nextStatus) => updateParams({ status: nextStatus, page: null });
-  const handleChannelChange = (value) => {
-    setChannel(value);
-    setPage(1);
-  };
   const handleSearchChange = (value) => {
     setSearch(value);
     setPage(1);
@@ -164,15 +184,58 @@ export default function OrdersList() {
     });
   };
 
+  const sorting = useMemo(
+    () => [{ id: ordering.replace(/^-/, ""), desc: ordering.startsWith("-") }],
+    [ordering]
+  );
+  const columnFilters = useMemo(
+    () =>
+      [
+        { id: "channel", value: channel },
+        { id: "payment", value: paymentStatus },
+        { id: "fulfillment", value: fulfillmentStatus },
+      ].filter((f) => f.value),
+    [channel, paymentStatus, fulfillmentStatus]
+  );
+  const table = useReactTable({
+    data: [],
+    columns: COLUMNS,
+    state: { sorting, columnFilters },
+    manualSorting: true,
+    manualFiltering: true,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: (updater) => {
+      const [next] = typeof updater === "function" ? updater(sorting) : updater;
+      updateParams({ ordering: next ? (next.desc ? "-" : "") + next.id : null, page: null });
+    },
+    onColumnFiltersChange: (updater) => {
+      const next = typeof updater === "function" ? updater(columnFilters) : updater;
+      const value = (id) => next.find((f) => f.id === id)?.value ?? null;
+      updateParams({
+        channel: value("channel"),
+        payment_status: value("payment"),
+        fulfillment_status: value("fulfillment"),
+        page: null,
+      });
+    },
+  });
+  const activeFilters = columnFilters.length;
+
   const searchParam = debouncedSearch || undefined;
-  const channelParam = channel || undefined;
+  const filterParams = {
+    channel: channel || undefined,
+    payment_status: paymentStatus || undefined,
+    fulfillment_status: fulfillmentStatus || undefined,
+    search: searchParam,
+  };
   const { data, isFetching, error, refetch } = useGetOrdersQuery({
     page,
     status: status || undefined,
-    channel: channelParam,
-    search: searchParam,
+    ordering: ordering === DEFAULT_ORDERING ? undefined : ordering,
+    ...filterParams,
   });
-  const { data: statusSummary } = useGetOrderStatusSummaryQuery({ channel: channelParam, search: searchParam });
+  const { data: statusSummary } = useGetOrderStatusSummaryQuery(filterParams);
   // Held visible for a moment even when the API answers instantly, so the user sees something happened.
   const loading = useMinimumLoading(isFetching);
   const rows = data?.rows ?? [];
@@ -199,13 +262,15 @@ export default function OrdersList() {
             />
           )}
         </div>
-        <Select value={channel} onChange={(e) => handleChannelChange(e.target.value)}>
-          {CHANNELS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
+        {activeFilters > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => updateParams({ channel: null, payment_status: null, fulfillment_status: null, page: null })}
+          >
+            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
+          </Button>
+        )}
       </div>
 
       <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
@@ -270,19 +335,21 @@ export default function OrdersList() {
           <Table className="min-w-[1100px] table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-7 w-[2.5%] border-b-2 border-border" />
-                <TableHead className="h-7 w-[8%] border-b-2 border-border">Order</TableHead>
-                <TableHead className="h-7 w-[9%] border-b-2 border-border">Invoice</TableHead>
-                <TableHead className="h-7 w-[11.5%] border-b-2 border-border">
-                  <span className="inline-flex items-center gap-1">Date <ArrowDown className="size-3" aria-label="Newest first" /></span>
-                </TableHead>
-                <TableHead className="h-7 w-[7%] border-b-2 border-border">Channel</TableHead>
-                <TableHead className="h-7 w-[12%] border-b-2 border-border">Customer</TableHead>
-                <TableHead className="h-7 w-[6.5%] border-b-2 border-border text-right">Total</TableHead>
-                <TableHead className="h-7 w-[11%] border-b-2 border-border">Payment</TableHead>
-                <TableHead className="h-7 w-[13%] border-b-2 border-border">Fulfillment</TableHead>
-                <TableHead className="h-7 w-[9.5%] border-b-2 border-border">Delivery</TableHead>
-                <TableHead className="h-7 w-[10%] border-b-2 border-border">Destination</TableHead>
+                {table.getHeaderGroups()[0].headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    style={{ width: `${header.column.columnDef.size}%` }}
+                    className={"h-7 border-b-2 border-border" + (header.column.columnDef.align === "right" ? " text-right" : "")}
+                  >
+                    {header.column.columnDef.header && (
+                      <ColumnHeader
+                        column={header.column}
+                        title={flexRender(header.column.columnDef.header, header.getContext())}
+                        align={header.column.columnDef.align}
+                      />
+                    )}
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
