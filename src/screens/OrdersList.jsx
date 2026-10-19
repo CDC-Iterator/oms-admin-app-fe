@@ -5,7 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { FulfilledByBadge } from "../components/FulfilledByBadge.jsx";
-import { LineProduct, OrderItemsSummary } from "../components/LineProduct.jsx";
+import { LineProduct } from "../components/LineProduct.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
@@ -28,7 +28,7 @@ const CHANNELS = [
   { value: "pos", label: "POS" },
 ];
 
-const COLUMN_COUNT = 12;
+const COLUMN_COUNT = 11;
 
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
@@ -252,7 +252,6 @@ export default function OrdersList() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-8 w-8 border-b-2 border-border" />
                 <TableHead className="h-8 border-b-2 border-border">Order</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Items</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Invoice</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Date</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Channel</TableHead>
@@ -278,12 +277,14 @@ export default function OrdersList() {
                         </Button>
                       </TableCell>
                       <TableCell className="py-1.5 font-mono text-xs">
-                        <Link to={`/orders/${row.id}`} className="text-primary hover:underline" title={row.external_order_id}>
+                        <Link
+                          to={`/orders/${row.id}`}
+                          state={{ orderIds: rows.map((r) => r.id) }}
+                          className="text-primary hover:underline"
+                          title={row.external_order_id}
+                        >
                           {row.order_name || row.external_order_id}
                         </Link>
-                      </TableCell>
-                      <TableCell className="py-1.5">
-                        <OrderItemsSummary items={row.items} />
                       </TableCell>
                       <TableCell className="py-1.5 font-mono text-xs">{row.invoice_id || "—"}</TableCell>
                       <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">

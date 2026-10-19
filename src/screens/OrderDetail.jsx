@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Ban, Pencil, Plus, RefreshCw, Undo2 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Ban, RefreshCw, Undo2 } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import {
@@ -19,10 +19,10 @@ import { Input } from "@/components/ui/input.jsx";
 import { Label } from "@/components/ui/label.jsx";
 import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { ChannelBadge } from "@/components/ChannelBadge.jsx";
 import { EmptyState } from "@/components/empty-state.jsx";
-import { LineProduct } from "../components/LineProduct.jsx";
+import { OrderAppBar } from "../components/OrderAppBar.jsx";
+import { OrderLinesSection } from "../components/OrderLinesSection.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { LineActionDialog } from "@/components/LineActionDialog.jsx";
 import { LineActionsCard } from "@/components/LineActionsCard.jsx";
@@ -45,7 +45,6 @@ import {
   fulfillmentTone,
   paymentTone,
   reservationTone,
-  shipmentTone,
   SUGGESTION_HIDDEN_STATUSES,
 } from "../lib/status.js";
 
@@ -145,27 +144,36 @@ const EVENT_MODES = {
 // appears in both, split by qty, not just wherever it happens to sit.
 // `li.shipments` (OrderLineItemSerializer) already carries {id, courier,
 // carrier_name, status, qty} per shipment covering that line.
-function groupLinesByShipment(lineItems) {
-  const unfulfilled = { key: "unfulfilled", shipmentRef: null, entries: [] };
+function groupLinesByShipment(lineItems, channelFulfillments = []) {
+  const unfulfilled = { key: "unfulfilled", shipmentRef: null, channelRef: null, entries: [] };
   const byShipmentId = new Map();
 
   for (const li of lineItems) {
     const refs = li.shipments ?? [];
     const shippedQty = refs.reduce((sum, s) => sum + s.qty, 0);
-    const remaining = li.qty - shippedQty;
+    // Units the sales channel (Shopify) already shows as fulfilled outside the OMS's own shipments.
+    const remaining = li.qty - shippedQty - (li.channel_fulfilled_qty ?? 0);
     if (remaining > 0) {
       unfulfilled.entries.push({ line: li, qty: remaining });
     }
     for (const ref of refs) {
       if (!byShipmentId.has(ref.id)) {
-        byShipmentId.set(ref.id, { key: `shipment-${ref.id}`, shipmentRef: ref, entries: [] });
+        byShipmentId.set(ref.id, { key: `shipment-${ref.id}`, shipmentRef: ref, channelRef: null, entries: [] });
       }
       byShipmentId.get(ref.id).entries.push({ line: li, qty: ref.qty });
     }
   }
 
   const shipmentGroups = [...byShipmentId.values()].sort((a, b) => a.shipmentRef.id - b.shipmentRef.id);
-  return unfulfilled.entries.length > 0 ? [unfulfilled, ...shipmentGroups] : shipmentGroups;
+  const linesById = new Map(lineItems.map((li) => [li.id, li]));
+  const channelGroups = channelFulfillments.map((f) => ({
+    key: `channel-${f.id}`,
+    shipmentRef: null,
+    channelRef: f,
+    entries: f.line_items.map(({ line_item, qty }) => ({ line: linesById.get(line_item), qty })).filter((e) => e.line),
+  }));
+  const fulfilledGroups = [...shipmentGroups, ...channelGroups];
+  return unfulfilled.entries.length > 0 ? [unfulfilled, ...fulfilledGroups] : fulfilledGroups;
 }
 
 // A line's `qty` can need more than one physical unit (many-to-many
@@ -498,6 +506,7 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
 export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const isAdmin = user?.is_superuser || user?.role === "admin";
   const { data: order, isFetching, error, refetch } = useGetOrderQuery(id);
@@ -546,16 +555,24 @@ export default function OrderDetail() {
             (li) =>
               !li.is_dropship &&
               (!REQUIRE_CONFIRMED_UNIT || li.is_fully_confirmed) &&
-              li.qty - (shippedByLine[li.id] ?? 0) > 0
+              li.qty - (shippedByLine[li.id] ?? 0) - (li.channel_fulfilled_qty ?? 0) > 0
           )
           .map((li) => li.id)
       : []
   );
   const selectedShippableLines = lineItems
     .filter((li) => selectedLineIds.has(li.id))
-    .map((li) => ({ ...li, remaining: li.qty - (shippedByLine[li.id] ?? 0) }));
+    .map((li) => ({ ...li, remaining: li.qty - (shippedByLine[li.id] ?? 0) - (li.channel_fulfilled_qty ?? 0) }));
   const shipmentById = new Map((shipments ?? []).map((s) => [s.id, s]));
-  const lineGroups = groupLinesByShipment(lineItems);
+  const lineGroups = groupLinesByShipment(lineItems, order?.channel_fulfillments ?? []);
+
+  // Prev/next only when opened from the list (it passes the visible page's ids in router state).
+  const listIds = location.state?.orderIds;
+  const listIndex = Array.isArray(listIds) ? listIds.indexOf(Number(id)) : -1;
+  const neighbourId = (step) => {
+    const target = listIndex >= 0 ? listIds[listIndex + step] : undefined;
+    return target === undefined ? undefined : () => navigate(`/orders/${target}`, { state: { orderIds: listIds } });
+  };
 
   const toggleLineSelection = (lineId, checked) => {
     setSelectedLineIds((prev) => {
@@ -568,10 +585,31 @@ export default function OrderDetail() {
 
   return (
     <div>
-      <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/orders")}>
-        <ArrowLeft className="size-3.5" />
-        Back to orders
-      </Button>
+      {order ? (
+        <OrderAppBar
+          order={order}
+          onBack={() => navigate("/orders")}
+          onPrev={neighbourId(-1)}
+          onNext={neighbourId(1)}
+          actions={
+            ORDER_EVENTS_ENABLED
+              ? Object.entries(EVENT_MODES).map(([mode, cfg]) => ({
+                  key: mode,
+                  label: cfg.label,
+                  icon: cfg.icon,
+                  destructive: mode === "cancelled",
+                  disabled: !canReverse,
+                  onSelect: () => setConfirmMode(mode),
+                }))
+              : []
+          }
+        />
+      ) : (
+        <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/orders")}>
+          <ArrowLeft className="size-3.5" />
+          Back to orders
+        </Button>
+      )}
 
       {isFetching && !order && (
         <div className="space-y-3">
@@ -615,140 +653,21 @@ export default function OrderDetail() {
               </CardHeader>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Lines</CardTitle>
-                {isAdmin && selectedLineIds.size > 0 && (
-                  <CardAction>
-                    <Button size="sm" variant="outline" onClick={() => setDialogTarget({})}>
-                      <Plus className="size-3.5" />
-                      Book Shipment
-                    </Button>
-                  </CardAction>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {lineGroups.map((group) => {
-                  const fullShipment = group.shipmentRef ? shipmentById.get(group.shipmentRef.id) : null;
-                  const isManual = group.shipmentRef?.courier === "manual";
-                  const showCheckboxColumn = !group.shipmentRef && isAdmin;
-                  return (
-                    <div key={group.key} className="overflow-hidden rounded-lg ring-1 ring-border">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          {group.shipmentRef ? (
-                            <StatusBadge tone={shipmentTone(group.shipmentRef.status)}>
-                              {(fullShipment?.last_reported_tracking_event_status &&
-                                TRACKING_EVENT_LABELS[fullShipment.last_reported_tracking_event_status]) ??
-                                group.shipmentRef.status}
-                            </StatusBadge>
-                          ) : (
-                            <span className="text-sm font-medium">Unfulfilled</span>
-                          )}
-                          {fullShipment?.last_reported_tracking_event_at && (
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(fullShipment.last_reported_tracking_event_at).toLocaleString()}
-                            </span>
-                          )}
-                          {group.shipmentRef && (
-                            <span className="text-xs text-muted-foreground capitalize">
-                              {group.shipmentRef.carrier_name || group.shipmentRef.courier}
-                            </span>
-                          )}
-                          {fullShipment?.awb_number && (
-                            <span className="font-mono text-xs text-muted-foreground">
-                              AWB {fullShipment.awb_number}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {order.allocated_location && (
-                            <span className="text-xs text-muted-foreground">{order.allocated_location}</span>
-                          )}
-                          {isManual && isAdmin && fullShipment && (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setDialogTarget(fullShipment)}
-                              aria-label="Edit shipment"
-                            >
-                              <Pencil className="size-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <Table className="table-fixed">
-                        <TableHeader>
-                          <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[30%]">Product</TableHead>
-                            <TableHead className="w-[14%]">SKU</TableHead>
-                            <TableHead className="w-[7%] text-right">Qty</TableHead>
-                            <TableHead className="w-[10%] text-right">Price</TableHead>
-                            <TableHead className="w-[22%]">Suggested / reserved unit</TableHead>
-                            <TableHead className="w-[17%]" />
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.entries.map(({ line, qty }) => (
-                            <TableRow key={`${group.key}-${line.id}`}>
-                              <TableCell className="font-mono">
-                                <div className="flex items-center gap-2">
-                                  {showCheckboxColumn && shippableLineIds.has(line.id) && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedLineIds.has(line.id)}
-                                      onChange={(e) => toggleLineSelection(line.id, e.target.checked)}
-                                      aria-label={`Select ${line.external_sku} for a shipment`}
-                                    />
-                                  )}
-                                  <LineProduct line={line} showSku={false} />
-                                  {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
-                                </div>
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {line.sku || "—"}
-                                {line.external_sku && line.external_sku !== line.sku && (
-                                  <p className="text-muted-foreground">{line.external_sku}</p>
-                                )}
-                              </TableCell>
-                              <TableCell className="font-mono tabular-nums text-right">{qty}</TableCell>
-                              <TableCell className="font-mono tabular-nums text-right">
-                                {Number(line.price ?? 0).toLocaleString("en-IN")}
-                              </TableCell>
-                              <TableCell>
-                                <SuggestedUnitCell orderId={id} orderStatus={order.status} lineItem={line} />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {isAdmin && !group.shipmentRef && line.can_cancel && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setLineActionTarget({ orderId: id, line, action: "cancel" })}
-                                  >
-                                    <Ban className="size-3.5" />
-                                    Cancel
-                                  </Button>
-                                )}
-                                {isAdmin && group.shipmentRef?.status === "delivered" && line.can_return && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setLineActionTarget({ orderId: id, line, action: "return" })}
-                                  >
-                                    <Undo2 className="size-3.5" />
-                                    Return
-                                  </Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
+            <OrderLinesSection
+              order={order}
+              orderId={id}
+              lineGroups={lineGroups}
+              shipmentById={shipmentById}
+              isAdmin={isAdmin}
+              shippableLineIds={shippableLineIds}
+              selectedLineIds={selectedLineIds}
+              onToggleLine={toggleLineSelection}
+              onBookShipment={() => setDialogTarget({})}
+              onEditShipment={setDialogTarget}
+              onLineAction={setLineActionTarget}
+              renderUnit={(line) => <SuggestedUnitCell orderId={id} orderStatus={order.status} lineItem={line} />}
+              trackingEventLabels={TRACKING_EVENT_LABELS}
+            />
 
             <LineActionsCard lineItems={lineItems} isAdmin={isAdmin} />
           </div>
@@ -824,39 +743,6 @@ export default function OrderDetail() {
                 </div>
               </CardContent>
             </Card>
-
-            {ORDER_EVENTS_ENABLED && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium">Order events</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Cancellations, returns and RTO all restock the same ledger — no separate pool.
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {Object.entries(EVENT_MODES).map(([mode, cfg]) => {
-                    const Icon = cfg.icon;
-                    return (
-                      <Button
-                        key={mode}
-                        variant="outline"
-                        className="w-full justify-start"
-                        disabled={!canReverse}
-                        onClick={() => setConfirmMode(mode)}
-                      >
-                        <Icon className="size-3.5" />
-                        {cfg.label}
-                      </Button>
-                    );
-                  })}
-                  {!canReverse && (
-                    <p className="pt-1 text-xs text-muted-foreground">
-                      This order is already {order.status} — nothing left to change.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       )}
