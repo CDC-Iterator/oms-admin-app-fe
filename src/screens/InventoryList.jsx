@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Boxes, PackageOpen } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import Pagination from "../components/Pagination.jsx";
@@ -292,7 +293,7 @@ export default function InventoryList() {
         />
       ) : isFetching && !data ? (
         <Skeleton className="h-64 w-full" />
-      ) : isEmpty ? (
+      ) : isEmpty && activeFilters === 0 ? (
         <EmptyState
           icon={Boxes}
           title="No ledger rows found"
@@ -329,6 +330,7 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {isEmpty && <TableEmptyRow colSpan={7} />}
                   {groups.map((group) => {
                     const groupLevel = stockLevel(group.totalAvailable);
                     return (
@@ -436,6 +438,7 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {isEmpty && <TableEmptyRow colSpan={7} />}
                   {flatRows.map((row) => {
                     const level = stockLevel(row.available_qty);
                     return (

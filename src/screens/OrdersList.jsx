@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
+import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { FulfilledByBadge } from "../components/FulfilledByBadge.jsx";
@@ -271,9 +272,9 @@ export default function OrdersList() {
             </Button>
           }
         />
-      ) : isFetching && (!data || rows.length === 0) ? (
+      ) : isFetching && !data ? (
         <Skeleton className="h-64 w-full" />
-      ) : rows.length === 0 ? (
+      ) : rows.length === 0 && activeFilters === 0 ? (
         <EmptyState
           icon={Receipt}
           title="No orders found"
@@ -312,6 +313,7 @@ export default function OrdersList() {
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
+              {rows.length === 0 && <TableEmptyRow colSpan={COLUMN_COUNT} />}
               {rows.map((row) => {
                 const isExpanded = expandedIds.has(row.id);
                 const destination = [row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ");

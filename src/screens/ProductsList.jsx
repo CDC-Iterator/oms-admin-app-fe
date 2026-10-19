@@ -3,6 +3,7 @@ import { Boxes, Check, PackageSearch, Unlink, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/empty-state.jsx";
+import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import Pagination from "../components/Pagination.jsx";
 import ReferencePickerDialog from "../components/ReferencePickerDialog.jsx";
@@ -415,7 +416,7 @@ export default function ProductsList() {
         />
       ) : isFetching && !data ? (
         <Skeleton className="h-64 w-full" />
-      ) : groups.length === 0 ? (
+      ) : groups.length === 0 && activeFilters === 0 ? (
         <EmptyState icon={PackageSearch} title="No products found" description="Try a different search or tab." />
       ) : (
         // <Table>'s own wrapper div (ui/table.jsx) sets overflow-x-auto,
@@ -448,6 +449,7 @@ export default function ProductsList() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {groups.length === 0 && <TableEmptyRow colSpan={5} />}
               {groups.map((group) => (
                 <Fragment key={group.style_code}>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">

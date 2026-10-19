@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { PackageSearch, RefreshCw, Unlink } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
@@ -335,7 +336,7 @@ export default function ChannelProducts() {
         />
       ) : isFetching && !data ? (
         <Skeleton className="h-64 w-full" />
-      ) : groups.length === 0 ? (
+      ) : groups.length === 0 && activeFilters === 0 ? (
         <EmptyState
           icon={PackageSearch}
           title="No channel products found"
@@ -367,6 +368,7 @@ export default function ChannelProducts() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {groups.length === 0 && <TableEmptyRow colSpan={6} />}
               {groups.map((group) => (
                 <Fragment key={group.product_id}>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
