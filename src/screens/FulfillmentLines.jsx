@@ -6,9 +6,9 @@ import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { LineProduct } from "../components/LineProduct.jsx";
 import Pagination from "../components/Pagination.jsx";
-import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
+import { Checkbox } from "@/components/ui/checkbox.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
@@ -67,6 +67,26 @@ export default function FulfillmentLines() {
   });
   const rows = data?.rows ?? [];
 
+  // Selection is by line id and survives paging; the header box toggles the lines on the current page.
+  const [selected, setSelected] = useState(() => new Set());
+  const toggle = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const pageSelected = rows.length > 0 && rows.every((r) => selected.has(r.line_id));
+  const togglePage = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const r of rows) {
+        if (pageSelected) next.delete(r.line_id);
+        else next.add(r.line_id);
+      }
+      return next;
+    });
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <p className="mb-4 shrink-0 text-sm text-muted-foreground">
@@ -94,6 +114,15 @@ export default function FulfillmentLines() {
         </Select>
       </div>
 
+      {selected.size > 0 && (
+        <div className="mb-3 flex shrink-0 items-center gap-3 rounded-lg bg-muted/50 px-3 py-1.5 text-sm">
+          <span className="font-medium">{selected.size} selected</span>
+          <Button size="xs" variant="ghost" onClick={() => setSelected(new Set())}>
+            Clear selection
+          </Button>
+        </div>
+      )}
+
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>
@@ -119,23 +148,34 @@ export default function FulfillmentLines() {
           <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[10%] border-b-2 border-border">
+                <TableHead className="w-[3%] border-b-2 border-border">
+                  <Checkbox checked={pageSelected} onCheckedChange={togglePage} aria-label="Select all lines on this page" />
+                </TableHead>
+                <TableHead className="w-[9%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("order")} title="Order" />
                 </TableHead>
-                <TableHead className="w-[14%] border-b-2 border-border">Invoice</TableHead>
-                <TableHead className="w-[13%] border-b-2 border-border">
+                <TableHead className="w-[12%] border-b-2 border-border">Invoice</TableHead>
+                <TableHead className="w-[11%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
-                <TableHead className="w-[31%] border-b-2 border-border">
+                <TableHead className="w-[28%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item" />
                 </TableHead>
-                <TableHead className="w-[5%] border-b-2 border-border text-center">Qty</TableHead>
-                <TableHead className="w-[27%] border-b-2 border-border">Unit</TableHead>
+                <TableHead className="w-[4%] border-b-2 border-border text-center">Qty</TableHead>
+                <TableHead className="w-[15%] border-b-2 border-border">Barcode</TableHead>
+                <TableHead className="w-[18%] border-b-2 border-border">Allocated location</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
               {rows.map((row) => (
-                <TableRow key={row.line_id}>
+                <TableRow key={row.line_id} data-state={selected.has(row.line_id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(row.line_id)}
+                      onCheckedChange={() => toggle(row.line_id)}
+                      aria-label={`Select ${row.order_name} ${row.external_sku}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono">
                     <Link to={`/orders/${row.order_id}`} className="text-primary hover:underline" title={row.customer_name}>
                       {row.order_name}
@@ -149,14 +189,11 @@ export default function FulfillmentLines() {
                     <LineProduct line={row} layout="card" />
                   </TableCell>
                   <TableCell className="text-center font-mono tabular-nums">{row.qty}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {row.units.map((u) => (
-                        <StatusBadge key={u.barcode} tone="success" className="status-chip--compact">
-                          {u.barcode} @ {u.location}
-                        </StatusBadge>
-                      ))}
-                    </div>
+                  <TableCell className="font-mono">
+                    {row.units.map((u) => u.barcode).join(", ")}
+                  </TableCell>
+                  <TableCell className="truncate" title={row.allocated_location || undefined}>
+                    {row.allocated_location || "—"}
                   </TableCell>
                 </TableRow>
               ))}
