@@ -16,7 +16,7 @@ const TONES = {
 };
 
 /** The channel a given row/order came from — one consistent chip. */
-export function ChannelBadge({ channel }) {
+export function ChannelBadge({ channel, className }) {
   if (!channel) return <span className="text-muted-foreground">—</span>;
-  return <StatusBadge tone={TONES[channel] ?? "neutral"}>{LABELS[channel] ?? channel}</StatusBadge>;
+  return <StatusBadge tone={TONES[channel] ?? "neutral"} className={className}>{LABELS[channel] ?? channel}</StatusBadge>;
 }

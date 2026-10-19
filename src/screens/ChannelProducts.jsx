@@ -336,7 +336,7 @@ export default function ChannelProducts() {
         // See InventoryList.jsx's own comment for why overflow-hidden lands
         // here and min-h-0/flex-1 on the nested [data-slot=table-container].
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1">
-          <Table className="table-fixed">
+          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[35%] border-b-2 border-border">Product</TableHead>
@@ -353,9 +353,9 @@ export default function ChannelProducts() {
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
                     <TableCell className="flex items-center gap-2 truncate py-2" title={group.product_title}>
                       {group.image_url ? (
-                        <img src={group.image_url} alt="" className="size-8 shrink-0 rounded object-cover" />
+                        <img src={group.image_url} alt="" className="size-6 shrink-0 rounded object-cover" />
                       ) : (
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded bg-muted">
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded bg-muted">
                           <PackageSearch className="size-3.5 text-muted-foreground" />
                         </div>
                       )}

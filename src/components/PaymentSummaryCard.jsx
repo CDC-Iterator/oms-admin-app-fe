@@ -16,7 +16,7 @@ const STATUS = {
 
 function Row({ label, detail, amount, strong }) {
   return (
-    <div className={"grid grid-cols-[7rem_1fr_auto] items-baseline gap-4 py-1 text-sm " + (strong ? "font-semibold" : "")}>
+    <div className={"grid grid-cols-[7rem_1fr_auto] items-baseline gap-3 py-0.5 text-xs " + (strong ? "font-semibold" : "")}>
       <span>{label}</span>
       <span className="min-w-0 truncate font-normal text-muted-foreground">{detail}</span>
       <span className="tabular-nums">{amount}</span>
@@ -66,7 +66,7 @@ export function PaymentSummaryCard({ order }) {
   const taxDetail = [s.tax != null ? `${inr(s.tax)} INR` : null, s.tax_label].filter(Boolean).join(" • ");
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-1.5">
       <div className="flex items-center gap-3">
         <span
           className={
@@ -76,12 +76,12 @@ export function PaymentSummaryCard({ order }) {
         >
           <Icon className="size-4" />
         </span>
-        <h3 className="text-base font-semibold">{status.label}</h3>
+        <h3 className="text-sm font-semibold">{status.label}</h3>
       </div>
 
-      <div className="rounded-2xl bg-card p-4 shadow-xs ring-1 ring-border">
+      <div className="rounded-xl bg-card p-3 shadow-xs ring-1 ring-border">
         {refunded > 0 && (
-          <div className="mb-2 border-b border-border pb-2">
+          <div className="mb-1.5 border-b border-border pb-1.5">
             <Row
               label="Original order"
               detail={s.placed_at ? new Date(s.placed_at).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }) : ""}
@@ -99,7 +99,7 @@ export function PaymentSummaryCard({ order }) {
         )}
         <Row label="Total" amount={inr(s.total)} strong />
         {s.paid != null && (
-          <div className="mt-2 border-t border-border pt-2">
+          <div className="mt-1.5 border-t border-border pt-1.5">
             <Row label="Paid" amount={inr(s.paid)} />
             {refunded > 0 && (
               <Row

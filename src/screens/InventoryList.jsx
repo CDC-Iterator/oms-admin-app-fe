@@ -277,7 +277,7 @@ export default function InventoryList() {
               capped at 40% (Product/Location here, Product in the flat
               layout below), long content truncated with an ellipsis
               instead of overflowing or wrapping the row taller. */}
-          <Table className="table-fixed">
+          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
             {locationId === null ? (
               <>
                 <TableHeader>
@@ -317,7 +317,7 @@ export default function InventoryList() {
                           <TableCell>
                             <Button
                               variant="outline"
-                              size="sm"
+                              size="xs"
                               onClick={() =>
                                 setUnitsTarget({
                                   skuId: group.sku_id,
@@ -350,7 +350,7 @@ export default function InventoryList() {
                               <TableCell>
                                 <Button
                                   variant="outline"
-                                  size="sm"
+                                  size="xs"
                                   onClick={() =>
                                     setUnitsTarget({
                                       skuId: group.sku_id,
@@ -404,7 +404,7 @@ export default function InventoryList() {
                         <TableCell>
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="xs"
                             onClick={() =>
                               setUnitsTarget({
                                 skuId: row.sku_id,

@@ -42,6 +42,7 @@ import {
   useUpdateShipmentMutation,
 } from "../api/services/fulfilment.js";
 import { formatApiError } from "../lib/errors.js";
+import { formatPlacedDate } from "../lib/utils.js";
 import {
   fulfillmentTone,
   paymentTone,
@@ -609,7 +610,7 @@ export default function OrderDetail() {
           }
         />
       ) : (
-        <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/orders")}>
+        <Button variant="ghost" size="sm" className="mb-2" onClick={() => navigate("/orders")}>
           <ArrowLeft className="size-3.5" />
           Back to orders
         </Button>
@@ -636,23 +637,23 @@ export default function OrderDetail() {
       )}
 
       {order && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
-            <Card>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
+            <Card size="sm">
               <CardHeader>
-                <CardTitle className="font-mono text-base" title={order.external_order_id}>
+                <CardTitle className="font-mono text-sm" title={order.external_order_id}>
                   {order.order_name || order.external_order_id}
                 </CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground font-mono">
-                  Placed {new Date(order.placed_at ?? order.created_at).toLocaleString()}
+                <p className="text-xs text-muted-foreground">
+                  Placed {formatPlacedDate(order.placed_at ?? order.created_at)}
                 </p>
                 <CardAction className="flex flex-wrap items-center gap-1.5">
-                  <ChannelBadge channel={order.channel} />
-                  <StatusBadge tone={reservationTone(order.status)}>{order.status}</StatusBadge>
+                  <ChannelBadge channel={order.channel} className="status-chip--compact" />
+                  <StatusBadge tone={reservationTone(order.status)} className="status-chip--compact">{order.status}</StatusBadge>
                   {order.payment_status && (
-                    <StatusBadge tone={paymentTone(order.payment_status)}>{order.payment_status}</StatusBadge>
+                    <StatusBadge tone={paymentTone(order.payment_status)} className="status-chip--compact">{order.payment_status}</StatusBadge>
                   )}
-                  <StatusBadge tone={fulfillmentTone(order.fulfillment_status)}>{order.fulfillment_status}</StatusBadge>
+                  <StatusBadge tone={fulfillmentTone(order.fulfillment_status)} className="status-chip--compact">{order.fulfillment_status}</StatusBadge>
                 </CardAction>
               </CardHeader>
             </Card>
@@ -678,38 +679,28 @@ export default function OrderDetail() {
             <LineActionsCard lineItems={lineItems} isAdmin={isAdmin} />
           </div>
 
-          <div className="space-y-4">
-            <Card>
+          <div className="space-y-3">
+            <Card size="sm">
               <CardHeader>
                 <CardTitle className="text-sm font-medium">Customer</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Name</p>
-                  <p>{order.customer_name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Phone / Email</p>
-                  <p className="text-xs">{order.customer_phone || order.customer_email || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Destination</p>
-                  <p>
+              <CardContent>
+                <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1.5 text-xs">
+                  <dt className="text-[11px] text-muted-foreground uppercase">Name</dt>
+                  <dd className="min-w-0 break-words">{order.customer_name || "—"}</dd>
+                  <dt className="text-[11px] text-muted-foreground uppercase">Phone / Email</dt>
+                  <dd className="min-w-0 break-words">{order.customer_phone || order.customer_email || "—"}</dd>
+                  <dt className="text-[11px] text-muted-foreground uppercase">Destination</dt>
+                  <dd className="min-w-0 break-words">
                     {order.shipping_city || "—"} {order.shipping_pincode ? `(${order.shipping_pincode})` : ""}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Invoice ID</p>
-                  <p className="font-mono">{order.invoice_id || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Delivery method</p>
-                  <p>{order.delivery_method || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Allocated location</p>
-                  <p className="font-mono">{order.allocated_location || "—"}</p>
-                </div>
+                  </dd>
+                  <dt className="text-[11px] text-muted-foreground uppercase">Invoice ID</dt>
+                  <dd className="min-w-0 break-words font-mono">{order.invoice_id || "—"}</dd>
+                  <dt className="text-[11px] text-muted-foreground uppercase">Delivery</dt>
+                  <dd className="min-w-0 break-words">{order.delivery_method || "—"}</dd>
+                  <dt className="text-[11px] text-muted-foreground uppercase">Location</dt>
+                  <dd className="min-w-0 break-words font-mono">{order.allocated_location || "—"}</dd>
+                </dl>
               </CardContent>
             </Card>
           </div>

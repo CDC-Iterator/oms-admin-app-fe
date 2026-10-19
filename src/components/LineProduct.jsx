@@ -32,7 +32,7 @@ export function LineProduct({ line, showSku = true, layout = "compact", children
   if (layout === "card") {
     return (
       <div className="flex min-w-0 flex-1 items-start gap-3 font-sans">
-        <ProductThumb src={line.image_url} alt={line.title} className="size-12 rounded-lg" />
+        <ProductThumb src={line.image_url} alt={line.title} className="size-9 rounded-md" />
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 break-words text-sm font-semibold leading-snug" title={line.title}>
             {line.title || line.external_sku || "Untitled product"}

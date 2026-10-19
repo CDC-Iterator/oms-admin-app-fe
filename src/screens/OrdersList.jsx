@@ -267,22 +267,22 @@ export default function OrdersList() {
               <div className="animate-indeterminate h-full w-1/3 bg-primary" />
             </div>
           )}
-          <Table className="min-w-[1280px] table-fixed">
+          <Table className="min-w-[1100px] table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 w-[3%] border-b-2 border-border" />
-                <TableHead className="h-8 w-[9%] border-b-2 border-border">Order</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Invoice</TableHead>
-                <TableHead className="h-8 w-[12%] border-b-2 border-border">
+                <TableHead className="h-7 w-[2.5%] border-b-2 border-border" />
+                <TableHead className="h-7 w-[8%] border-b-2 border-border">Order</TableHead>
+                <TableHead className="h-7 w-[9%] border-b-2 border-border">Invoice</TableHead>
+                <TableHead className="h-7 w-[11.5%] border-b-2 border-border">
                   <span className="inline-flex items-center gap-1">Date <ArrowDown className="size-3" aria-label="Newest first" /></span>
                 </TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border">Channel</TableHead>
-                <TableHead className="h-8 w-[12%] border-b-2 border-border">Customer</TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border text-right">Total</TableHead>
-                <TableHead className="h-8 w-[12%] border-b-2 border-border">Payment</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Fulfillment</TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border">Delivery</TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border">Destination</TableHead>
+                <TableHead className="h-7 w-[7%] border-b-2 border-border">Channel</TableHead>
+                <TableHead className="h-7 w-[12%] border-b-2 border-border">Customer</TableHead>
+                <TableHead className="h-7 w-[6.5%] border-b-2 border-border text-right">Total</TableHead>
+                <TableHead className="h-7 w-[11%] border-b-2 border-border">Payment</TableHead>
+                <TableHead className="h-7 w-[13%] border-b-2 border-border">Fulfillment</TableHead>
+                <TableHead className="h-7 w-[9.5%] border-b-2 border-border">Delivery</TableHead>
+                <TableHead className="h-7 w-[10%] border-b-2 border-border">Destination</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
@@ -297,13 +297,13 @@ export default function OrdersList() {
                 return (
                   <Fragment key={row.id}>
                     <TableRow>
-                      <TableCell className="py-1.5">
-                        <Button variant="ghost" size="icon-sm" onClick={() => toggleExpanded(row.id)}>
+                      <TableCell className="py-1">
+                        <Button variant="ghost" size="icon-sm" className="size-5" onClick={() => toggleExpanded(row.id)}>
                           {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
                           <span className="sr-only">{isExpanded ? "Hide line items" : "Show line items"}</span>
                         </Button>
                       </TableCell>
-                      <TableCell className="py-1.5 font-mono text-xs">
+                      <TableCell className="py-1 font-mono text-xs">
                         <Link
                           to={`/orders/${row.id}`}
                           state={{ orderIds: rows.map((r) => r.id) }}
@@ -313,27 +313,27 @@ export default function OrdersList() {
                           {row.order_name || row.external_order_id}
                         </Link>
                       </TableCell>
-                      <TableCell className={"truncate py-1.5 font-mono text-xs" + strike} title={row.invoice_id || undefined}>{invoiceLabel}</TableCell>
-                      <TableCell className={"truncate py-1.5 text-xs" + strike}>{formatPlacedDate(row.placed_at ?? row.created_at)}</TableCell>
-                      <TableCell className="py-1.5">
-                        <ChannelBadge channel={row.channel} />
+                      <TableCell className={"truncate py-1 font-mono text-xs" + strike} title={row.invoice_id || undefined}>{invoiceLabel}</TableCell>
+                      <TableCell className={"truncate py-1 text-xs" + strike}>{formatPlacedDate(row.placed_at ?? row.created_at)}</TableCell>
+                      <TableCell className="py-1">
+                        <ChannelBadge channel={row.channel} className="status-chip--compact" />
                       </TableCell>
-                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={row.customer_name || undefined}>{row.customer_name || "—"}</TableCell>
-                      <TableCell className={"py-1.5 text-right font-mono text-xs tabular-nums" + strike}>
+                      <TableCell className={"truncate py-1 text-xs" + strike} title={row.customer_name || undefined}>{row.customer_name || "—"}</TableCell>
+                      <TableCell className={"py-1 text-right font-mono text-xs tabular-nums" + strike}>
                         {Number(row.total_amount ?? 0).toLocaleString("en-IN")}
                       </TableCell>
-                      <TableCell className="py-1.5">
+                      <TableCell className="py-1">
                         {row.payment_status ? (
-                          <StatusBadge tone={paymentTone(row.payment_status)}>{row.payment_status}</StatusBadge>
+                          <StatusBadge tone={paymentTone(row.payment_status)} className="status-chip--compact">{row.payment_status}</StatusBadge>
                         ) : (
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="py-1.5">
-                        <StatusBadge tone={fulfillmentTone(row.fulfillment_status)}>{row.fulfillment_status}</StatusBadge>
+                      <TableCell className="py-1">
+                        <StatusBadge tone={fulfillmentTone(row.fulfillment_status)} className="status-chip--compact">{row.fulfillment_status}</StatusBadge>
                       </TableCell>
-                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={row.delivery_method || undefined}>{row.delivery_method || "—"}</TableCell>
-                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={destination || undefined}>{destination || "—"}</TableCell>
+                      <TableCell className={"truncate py-1 text-xs" + strike} title={row.delivery_method || undefined}>{row.delivery_method || "—"}</TableCell>
+                      <TableCell className={"truncate py-1 text-xs" + strike} title={destination || undefined}>{destination || "—"}</TableCell>
                     </TableRow>
                     {isExpanded && <LineItemsRow orderId={row.id} />}
                   </Fragment>
