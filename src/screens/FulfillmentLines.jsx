@@ -161,7 +161,7 @@ export default function FulfillmentLines() {
           <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[3%] border-b-2 border-border">
+                <TableHead className="w-[3%] border-b-2 border-foreground/25">
                   <input
                     type="checkbox"
                     className="size-4"
@@ -170,19 +170,19 @@ export default function FulfillmentLines() {
                     aria-label="Select all lines on this page"
                   />
                 </TableHead>
-                <TableHead className="w-[33%] border-b-2 border-border">
+                <TableHead className="w-[33%] border-b-2 border-foreground/25">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item" />
                 </TableHead>
-                <TableHead className="w-[9%] border-b-2 border-border">
+                <TableHead className="w-[9%] border-b-2 border-foreground/25">
                   <ColumnHeader column={table.getColumn("order")} title="Order" />
                 </TableHead>
-                <TableHead className="w-[12%] border-b-2 border-border">Invoice</TableHead>
-                <TableHead className="w-[11%] border-b-2 border-border">
+                <TableHead className="w-[12%] border-b-2 border-foreground/25">Invoice</TableHead>
+                <TableHead className="w-[11%] border-b-2 border-foreground/25">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
-                <TableHead className="w-[4%] border-b-2 border-border text-center">Qty</TableHead>
-                <TableHead className="w-[13%] border-b-2 border-border">Barcode</TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">
+                <TableHead className="w-[4%] border-b-2 border-foreground/25 text-center">Qty</TableHead>
+                <TableHead className="w-[13%] border-b-2 border-foreground/25">Barcode</TableHead>
+                <TableHead className="w-[15%] border-b-2 border-foreground/25">
                   <ColumnHeader column={table.getColumn("allocated_location")} title="Allocated location" />
                 </TableHead>
               </TableRow>
