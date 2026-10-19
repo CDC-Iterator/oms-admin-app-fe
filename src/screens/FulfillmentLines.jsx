@@ -201,7 +201,7 @@ export default function FulfillmentLines() {
                     />
                   </TableCell>
                   <TableCell>
-                    <LineProduct line={row} layout="card" />
+                    <LineProduct line={row} layout="card" dense />
                   </TableCell>
                   <TableCell className="font-mono">
                     <Link to={`/orders/${row.order_id}`} className="text-primary hover:underline" title={row.customer_name}>
