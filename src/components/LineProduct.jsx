@@ -31,7 +31,7 @@ export function ProductThumb({ src, alt = "", className }) {
 export function LineProduct({ line, showSku = true, layout = "compact", dense = false, children }) {
   if (layout === "card") {
     return (
-      <div className="flex min-w-0 flex-1 items-start gap-3 font-sans">
+      <div className={cn("flex min-w-0 flex-1 gap-3 font-sans", dense ? "items-center" : "items-start")}>
         <ProductThumb src={line.image_url} alt={line.title} className="size-9 rounded-md" />
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 break-words text-sm font-semibold leading-snug" title={line.title}>
