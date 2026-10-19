@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Receipt } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { FulfilledByBadge } from "../components/FulfilledByBadge.jsx";
+import { LineProduct } from "../components/LineProduct.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
@@ -14,6 +15,7 @@ import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
+import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import { formatApiError } from "../lib/errors.js";
 import { fulfillmentTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
@@ -57,22 +59,24 @@ function LineItemsRow({ orderId }) {
           <p className="pl-8 text-xs text-muted-foreground">No line items on this order.</p>
         ) : (
           <div className="overflow-hidden rounded-lg ring-1 ring-border">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-8 text-[0.65rem]">SKU</TableHead>
-                  <TableHead className="h-8 text-center text-[0.65rem]">Qty</TableHead>
-                  <TableHead className="h-8 text-center text-[0.65rem]">Price</TableHead>
-                  <TableHead className="h-8 text-[0.65rem]">Unit</TableHead>
-                  <TableHead className="h-8 text-[0.65rem]">Fulfilled by</TableHead>
+                  <TableHead className="h-8 w-[42%] text-[0.65rem]">Product</TableHead>
+                  <TableHead className="h-8 w-[8%] text-center text-[0.65rem]">Qty</TableHead>
+                  <TableHead className="h-8 w-[12%] text-right text-[0.65rem]">Price</TableHead>
+                  <TableHead className="h-8 w-[22%] text-[0.65rem]">Unit</TableHead>
+                  <TableHead className="h-8 w-[16%] text-[0.65rem]">Fulfilled by</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {lineItems.map((li) => (
                   <TableRow key={li.id}>
-                    <TableCell className="font-mono text-xs">{li.external_sku}</TableCell>
+                    <TableCell>
+                      <LineProduct line={li} layout="card" />
+                    </TableCell>
                     <TableCell className="text-center font-mono text-xs tabular-nums">{li.qty}</TableCell>
-                    <TableCell className="text-center font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {Number(li.price ?? 0).toLocaleString("en-IN")}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
@@ -168,6 +172,8 @@ export default function OrdersList() {
     search: searchParam,
   });
   const { data: statusSummary } = useGetOrderStatusSummaryQuery({ channel: channelParam, search: searchParam });
+  // Held visible for a moment even when the API answers instantly, so the user sees something happened.
+  const loading = useMinimumLoading(isFetching);
   const rows = data?.rows ?? [];
   const totalCount = (statusSummary ?? []).reduce((sum, s) => sum + s.count, 0);
 
@@ -178,12 +184,20 @@ export default function OrdersList() {
       </p>
 
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
-        <Input
-          placeholder="Search order, customer, city…"
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="flex-1"
-        />
+        <div className="relative min-w-48 flex-1">
+          <Input
+            placeholder="Search order, invoice, customer, city…"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full pr-9"
+          />
+          {(search !== debouncedSearch || loading) && (
+            <Loader2
+              className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+              aria-label="Searching"
+            />
+          )}
+        </div>
         <Select value={channel} onChange={(e) => handleChannelChange(e.target.value)}>
           {CHANNELS.map((c) => (
             <option key={c.value} value={c.value}>
@@ -232,7 +246,7 @@ export default function OrdersList() {
             </Button>
           }
         />
-      ) : isFetching && !data ? (
+      ) : isFetching && (!data || rows.length === 0) ? (
         <Skeleton className="h-64 w-full" />
       ) : rows.length === 0 ? (
         <EmptyState
@@ -243,27 +257,40 @@ export default function OrdersList() {
       ) : (
         // See InventoryList.jsx's own comment for why overflow-hidden lands
         // here and min-h-0/flex-1 on the nested [data-slot=table-container].
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1">
-          <Table>
+        <div
+          aria-busy={loading}
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1"
+        >
+          {loading && (
+            <div className="absolute inset-x-0 top-0 z-20 h-[3px] overflow-hidden bg-primary/15">
+              <div className="animate-indeterminate h-full w-1/3 bg-primary" />
+            </div>
+          )}
+          <Table className="min-w-[1280px] table-fixed">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 w-8 border-b-2 border-border" />
-                <TableHead className="h-8 border-b-2 border-border">Order</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Invoice</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Date</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Channel</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Customer</TableHead>
-                <TableHead className="h-8 border-b-2 border-border text-center">Total</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Payment</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Fulfillment</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Delivery</TableHead>
-                <TableHead className="h-8 border-b-2 border-border">Destination</TableHead>
+                <TableHead className="h-8 w-[3%] border-b-2 border-border" />
+                <TableHead className="h-8 w-[9%] border-b-2 border-border">Order</TableHead>
+                <TableHead className="h-8 w-[10%] border-b-2 border-border">Invoice</TableHead>
+                <TableHead className="h-8 w-[8%] border-b-2 border-border">Date</TableHead>
+                <TableHead className="h-8 w-[8%] border-b-2 border-border">Channel</TableHead>
+                <TableHead className="h-8 w-[12%] border-b-2 border-border">Customer</TableHead>
+                <TableHead className="h-8 w-[8%] border-b-2 border-border text-right">Total</TableHead>
+                <TableHead className="h-8 w-[12%] border-b-2 border-border">Payment</TableHead>
+                <TableHead className="h-8 w-[10%] border-b-2 border-border">Fulfillment</TableHead>
+                <TableHead className="h-8 w-[10%] border-b-2 border-border">Delivery</TableHead>
+                <TableHead className="h-8 w-[10%] border-b-2 border-border">Destination</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
               {rows.map((row) => {
                 const isExpanded = expandedIds.has(row.id);
                 const destination = [row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ");
+                // An order can carry several POS invoices (comma-separated): show the first, hint at the rest.
+                const invoices = (row.invoice_id || "").split(",").map((i) => i.trim()).filter(Boolean);
+                const invoiceLabel = invoices.length === 0 ? "—" : invoices.length > 1 ? `${invoices[0]} …` : invoices[0];
+                // Cancelled orders read as struck through (badges stay legible).
+                const strike = row.status === "cancelled" ? " line-through decoration-muted-foreground/70 text-muted-foreground" : "";
                 return (
                   <Fragment key={row.id}>
                     <TableRow>
@@ -274,19 +301,24 @@ export default function OrdersList() {
                         </Button>
                       </TableCell>
                       <TableCell className="py-1.5 font-mono text-xs">
-                        <Link to={`/orders/${row.id}`} className="text-primary hover:underline" title={row.external_order_id}>
+                        <Link
+                          to={`/orders/${row.id}`}
+                          state={{ orderIds: rows.map((r) => r.id) }}
+                          className={row.status === "cancelled" ? "hover:underline" + strike : "text-primary hover:underline"}
+                          title={row.external_order_id}
+                        >
                           {row.order_name || row.external_order_id}
                         </Link>
                       </TableCell>
-                      <TableCell className="py-1.5 font-mono text-xs">{row.invoice_id || "—"}</TableCell>
-                      <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">
-                        {row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"}
+                      <TableCell className={"truncate py-1.5 font-mono text-xs" + strike} title={row.invoice_id || undefined}>{invoiceLabel}</TableCell>
+                      <TableCell className={"py-1.5 font-mono text-xs text-muted-foreground" + strike}>
+                        {row.placed_at || row.created_at ? new Date(row.placed_at ?? row.created_at).toLocaleDateString() : "—"}
                       </TableCell>
                       <TableCell className="py-1.5">
                         <ChannelBadge channel={row.channel} />
                       </TableCell>
-                      <TableCell className="py-1.5 text-sm">{row.customer_name || "—"}</TableCell>
-                      <TableCell className="py-1.5 text-center font-mono text-xs tabular-nums">
+                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={row.customer_name || undefined}>{row.customer_name || "—"}</TableCell>
+                      <TableCell className={"py-1.5 text-right font-mono text-xs tabular-nums" + strike}>
                         {Number(row.total_amount ?? 0).toLocaleString("en-IN")}
                       </TableCell>
                       <TableCell className="py-1.5">
@@ -299,8 +331,8 @@ export default function OrdersList() {
                       <TableCell className="py-1.5">
                         <StatusBadge tone={fulfillmentTone(row.fulfillment_status)}>{row.fulfillment_status}</StatusBadge>
                       </TableCell>
-                      <TableCell className="py-1.5 text-sm">{row.delivery_method || "—"}</TableCell>
-                      <TableCell className="py-1.5 text-sm">{destination || "—"}</TableCell>
+                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={row.delivery_method || undefined}>{row.delivery_method || "—"}</TableCell>
+                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={destination || undefined}>{destination || "—"}</TableCell>
                     </TableRow>
                     {isExpanded && <LineItemsRow orderId={row.id} />}
                   </Fragment>
@@ -312,7 +344,7 @@ export default function OrdersList() {
       )}
 
       <div className="shrink-0">
-        <Pagination page={page} pageSize={PAGE_SIZE} count={data?.count ?? 0} onPageChange={setPage} />
+        <Pagination page={page} pageSize={PAGE_SIZE} count={data?.count ?? 0} onPageChange={setPage} loading={loading} />
       </div>
     </div>
   );
