@@ -159,12 +159,12 @@ export default function FulfillmentLines() {
                 <TableHead className="w-[11%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
-                <TableHead className="w-[25%] border-b-2 border-border">
+                <TableHead className="w-[33%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item" />
                 </TableHead>
                 <TableHead className="w-[4%] border-b-2 border-border text-center">Qty</TableHead>
-                <TableHead className="w-[23%] border-b-2 border-border">Barcode</TableHead>
-                <TableHead className="w-[13%] border-b-2 border-border">Allocated location</TableHead>
+                <TableHead className="w-[15%] border-b-2 border-border">Barcode</TableHead>
+                <TableHead className="w-[16%] border-b-2 border-border">Allocated location</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
@@ -194,7 +194,7 @@ export default function FulfillmentLines() {
                     <div className="flex flex-wrap gap-1">
                       {row.units.map((u) => (
                         <StatusBadge key={u.barcode} tone="success" className="status-chip--compact">
-                          {u.barcode} @ {u.location}
+                          {u.barcode}
                         </StatusBadge>
                       ))}
                     </div>
