@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Boxes, PackageOpen } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
@@ -23,10 +24,26 @@ import {
   useGetInventoryLocationSummaryQuery,
   useGetInventoryUnitsQuery,
 } from "../api/services/inventory.js";
+import { useServerColumns } from "../hooks/useServerColumns.js";
 import { formatApiError } from "../lib/errors.js";
 import { stockLevel } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
+
+const LEVEL_OPTIONS = [
+  { value: "out", label: "Out of stock" },
+  { value: "low", label: "Low stock" },
+  { value: "in", label: "In stock" },
+];
+// Column ids are the backend's ?ordering= keys (apps.inventory.filters).
+const COLUMNS = [
+  { id: "product", header: "Product" },
+  { id: "item_code", header: "Item code" },
+  { id: "committed", header: "Committed" },
+  { id: "available", header: "Available" },
+  { id: "on_hand", header: "On hand" },
+  { id: "level", enableSorting: false, meta: { filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
+];
 
 // InventoryUnit.Status choices — apps.inventory.models.
 function unitStatusTone(status) {
@@ -188,12 +205,18 @@ export default function InventoryList() {
   };
 
   const searchParam = debouncedSearch || undefined;
+  const { table, orderingParam, filterParams, activeFilters, clearFilters } = useServerColumns({
+    columns: COLUMNS,
+    defaultOrdering: "item_code",
+  });
   const { data, isFetching, error, refetch } = useGetInventoryLedgerQuery({
     page,
     search: searchParam,
     location_id: locationId ?? undefined,
+    ordering: orderingParam,
+    ...filterParams,
   });
-  const { data: locationSummary } = useGetInventoryLocationSummaryQuery({ search: searchParam });
+  const { data: locationSummary } = useGetInventoryLocationSummaryQuery({ search: searchParam, ...filterParams });
 
   // "All" groups by item code (a sku can span several locations); a
   // specific location tab shows one flat row per sku — grouping would
@@ -214,12 +237,19 @@ export default function InventoryList() {
           : "Every SKU stocked at this location — the same ledger every channel's availability is pushed from."}
       </p>
 
-      <Input
-        placeholder="Search item code, location…"
-        value={search}
-        onChange={(e) => handleSearchChange(e.target.value)}
-        className="mb-3 w-full shrink-0"
-      />
+      <div className="mb-3 flex shrink-0 items-center gap-2">
+        <Input
+          placeholder="Search item code, location…"
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="w-full"
+        />
+        {activeFilters > 0 && (
+          <Button size="sm" variant="outline" onClick={clearFilters}>
+            Clear filter
+          </Button>
+        )}
+      </div>
 
       <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
         <button
@@ -282,12 +312,19 @@ export default function InventoryList() {
               <>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[40%] border-b-2 border-border">Product/Location</TableHead>
-                    <TableHead className="border-b-2 border-border">Item code</TableHead>
+                    <TableHead className="w-[40%] border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("product")} title="Product/Location" />
+                    </TableHead>
+                    <TableHead className="border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
+                    </TableHead>
+                    {/* Quantity sorts would scatter the per-sku groups, so they only apply to a location tab. */}
                     <TableHead className="border-b-2 border-border text-center">Committed</TableHead>
                     <TableHead className="border-b-2 border-border text-center">Available</TableHead>
                     <TableHead className="border-b-2 border-border text-center">On hand</TableHead>
-                    <TableHead className="border-b-2 border-border text-center">Level</TableHead>
+                    <TableHead className="border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("level")} title="Level" align="center" />
+                    </TableHead>
                     <TableHead className="w-[10%] border-b-2 border-border">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -377,12 +414,24 @@ export default function InventoryList() {
               <>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[40%] border-b-2 border-border">Product</TableHead>
-                    <TableHead className="border-b-2 border-border">Item code</TableHead>
-                    <TableHead className="border-b-2 border-border text-center">Committed</TableHead>
-                    <TableHead className="border-b-2 border-border text-center">Available</TableHead>
-                    <TableHead className="border-b-2 border-border text-center">On hand</TableHead>
-                    <TableHead className="border-b-2 border-border text-center">Level</TableHead>
+                    <TableHead className="w-[40%] border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("product")} title="Product" />
+                    </TableHead>
+                    <TableHead className="border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
+                    </TableHead>
+                    <TableHead className="border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("committed")} title="Committed" align="center" />
+                    </TableHead>
+                    <TableHead className="border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("available")} title="Available" align="center" />
+                    </TableHead>
+                    <TableHead className="border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("on_hand")} title="On hand" align="center" />
+                    </TableHead>
+                    <TableHead className="border-b-2 border-border">
+                      <ColumnHeader column={table.getColumn("level")} title="Level" align="center" />
+                    </TableHead>
                     <TableHead className="w-[10%] border-b-2 border-border">Actions</TableHead>
                   </TableRow>
                 </TableHeader>

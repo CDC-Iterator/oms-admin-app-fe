@@ -3,6 +3,7 @@ import { Boxes, Check, PackageSearch, Unlink, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/empty-state.jsx";
+import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import Pagination from "../components/Pagination.jsx";
 import ReferencePickerDialog from "../components/ReferencePickerDialog.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
@@ -29,12 +30,25 @@ import {
 } from "../api/services/catalog.js";
 import { useGetChannelProductsQuery } from "../api/services/channelProducts.js";
 import { useGetInventoryLedgerQuery } from "../api/services/inventory.js";
+import { useServerColumns } from "../hooks/useServerColumns.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
 import { formatApiError } from "../lib/errors.js";
 import { stockLevel } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
+
+const MAPPING_OPTIONS = [
+  { value: "mapped", label: "Mapped" },
+  { value: "unmapped", label: "Unmapped" },
+];
+// Column ids are the backend's ?ordering= keys (apps.catalog.filters).
+const COLUMNS = [
+  { id: "product", header: "Variant" },
+  { id: "item_code", header: "Item code" },
+  { id: "shopify", enableSorting: false, meta: { filterOptions: MAPPING_OPTIONS, filterParam: "shopify" } },
+  { id: "tatacliq", enableSorting: false, meta: { filterOptions: MAPPING_OPTIONS, filterParam: "tatacliq" } },
+];
 const CHANNELS = [
   { key: "shopify", label: "Shopify" },
   { key: "tatacliq", label: "TataCliq" },
@@ -324,10 +338,20 @@ export default function ProductsList() {
   };
 
   const searchParam = debouncedSearch || undefined;
-  const activeParams = { page, search: searchParam, unmapped: tab === "unmapped" ? true : undefined };
+  const { table, orderingParam, filterParams, activeFilters, clearFilters } = useServerColumns({
+    columns: COLUMNS,
+    defaultOrdering: "product",
+  });
+  const activeParams = {
+    page,
+    search: searchParam,
+    unmapped: tab === "unmapped" ? true : undefined,
+    ordering: orderingParam,
+    ...filterParams,
+  };
   const { data, isFetching, error, refetch } = useGetProductsQuery(activeParams);
-  const { data: allCount } = useGetProductsQuery({ search: searchParam, page: 1 });
-  const { data: unmappedCount } = useGetProductsQuery({ search: searchParam, unmapped: true, page: 1 });
+  const { data: allCount } = useGetProductsQuery({ search: searchParam, ...filterParams, page: 1 });
+  const { data: unmappedCount } = useGetProductsQuery({ search: searchParam, ...filterParams, unmapped: true, page: 1 });
 
   const groups = useMemo(() => groupByProduct(data?.rows ?? []), [data]);
 
@@ -363,12 +387,19 @@ export default function ProductsList() {
             </button>
           ))}
         </div>
-        <Input
-          placeholder="Search item code, style, title, Shopify/TataCliq ID…"
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="mb-1.5 max-w-80"
-        />
+        <div className="mb-1.5 flex items-center gap-2">
+          {activeFilters > 0 && (
+            <Button size="sm" variant="outline" onClick={clearFilters}>
+              Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
+            </Button>
+          )}
+          <Input
+            placeholder="Search item code, style, title, Shopify/TataCliq ID…"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="max-w-80"
+          />
+        </div>
       </div>
 
       {error ? (
@@ -401,10 +432,18 @@ export default function ProductsList() {
                 table doesn't use — a per-cell border always renders). */}
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[45%] border-b-2 border-border">Variant</TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">Item code</TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border text-center">Shopify</TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border text-center">TataCliq</TableHead>
+                <TableHead className="w-[45%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("product")} title="Variant" />
+                </TableHead>
+                <TableHead className="w-[15%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
+                </TableHead>
+                <TableHead className="w-[15%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("shopify")} title="Shopify" align="center" />
+                </TableHead>
+                <TableHead className="w-[15%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("tatacliq")} title="TataCliq" align="center" />
+                </TableHead>
                 <TableHead className="w-[10%] border-b-2 border-border">Actions</TableHead>
               </TableRow>
             </TableHeader>

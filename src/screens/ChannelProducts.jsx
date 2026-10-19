@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { PackageSearch, RefreshCw, Unlink } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import Pagination from "../components/Pagination.jsx";
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/alert-dialog.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
-import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.jsx";
@@ -28,6 +28,7 @@ import {
   useUpsertChannelMappingMutation,
 } from "../api/services/catalog.js";
 import { useGetChannelProductsQuery, useSyncChannelProductsMutation } from "../api/services/channelProducts.js";
+import { useServerColumns } from "../hooks/useServerColumns.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
 import { formatApiError } from "../lib/errors.js";
@@ -43,10 +44,17 @@ const CHANNELS = [
   { value: "tatacliq", label: "TataCliq" },
 ];
 
-const MAPPED_FILTERS = [
-  { value: "", label: "All" },
+const MAPPED_OPTIONS = [
   { value: "true", label: "Mapped" },
   { value: "false", label: "Unmapped" },
+];
+// Column ids are the backend's ?ordering= keys (apps.channels.filters).
+const COLUMNS = [
+  { id: "product", header: "Product" },
+  { id: "vendor", header: "Vendor" },
+  { id: "sku", header: "SKU" },
+  { id: "price", header: "Price" },
+  { id: "mapping", enableSorting: false, meta: { filterOptions: MAPPED_OPTIONS, filterParam: "mapped" } },
 ];
 
 function groupByProduct(rows) {
@@ -196,7 +204,6 @@ export default function ChannelProducts() {
   // mount-firing useEffect.
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const mapped = searchParams.get("mapped") || "";
   const channel = searchParams.get("channel") || "";
 
   const updateParams = (updates) => {
@@ -215,7 +222,6 @@ export default function ChannelProducts() {
       { replace: true }
     );
   };
-  const handleMappedFilterChange = (nextMapped) => updateParams({ mapped: nextMapped, page: null });
   const handleChannelTabChange = (nextChannel) => updateParams({ channel: nextChannel, page: null });
   const handleSearchChange = (value) => {
     setSearch(value);
@@ -223,13 +229,18 @@ export default function ChannelProducts() {
   };
 
   const searchParam = debouncedSearch || undefined;
-  const mappedParam = mapped || undefined;
+  const { table, orderingParam, filterParams, activeFilters, clearFilters } = useServerColumns({
+    columns: COLUMNS,
+    defaultOrdering: "product",
+  });
+  const mappedParam = filterParams.mapped;
   const channelParam = channel || undefined;
   const { data, isFetching, error, refetch } = useGetChannelProductsQuery({
     page,
     search: searchParam,
     mapped: mappedParam,
     channel: channelParam,
+    ordering: orderingParam,
   });
   // Grouped within this page only — same known simplification
   // ProductsList.jsx's own groupByProduct already accepts.
@@ -287,13 +298,11 @@ export default function ChannelProducts() {
           onChange={(e) => handleSearchChange(e.target.value)}
           className="flex-1"
         />
-        <Select value={mapped} onChange={(e) => handleMappedFilterChange(e.target.value)}>
-          {MAPPED_FILTERS.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </Select>
+        {activeFilters > 0 && (
+          <Button size="sm" variant="outline" onClick={clearFilters}>
+            Clear filter
+          </Button>
+        )}
       </div>
 
       <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
@@ -339,12 +348,22 @@ export default function ChannelProducts() {
           <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[35%] border-b-2 border-border">Product</TableHead>
+                <TableHead className="w-[35%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("product")} title="Product" />
+                </TableHead>
                 <TableHead className="border-b-2 border-border">Channel</TableHead>
-                <TableHead className="border-b-2 border-border">Vendor</TableHead>
-                <TableHead className="border-b-2 border-border">SKU</TableHead>
-                <TableHead className="border-b-2 border-border text-center">Price</TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border text-center">Mapping</TableHead>
+                <TableHead className="border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("vendor")} title="Vendor" />
+                </TableHead>
+                <TableHead className="border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("sku")} title="SKU" />
+                </TableHead>
+                <TableHead className="border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("price")} title="Price" align="center" />
+                </TableHead>
+                <TableHead className="w-[15%] border-b-2 border-border">
+                  <ColumnHeader column={table.getColumn("mapping")} title="Mapping" align="center" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

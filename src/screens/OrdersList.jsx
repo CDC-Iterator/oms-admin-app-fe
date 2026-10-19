@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { Fragment, useEffect, useState } from "react";
+import { flexRender } from "@tanstack/react-table";
 import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
+import { useServerColumns } from "../hooks/useServerColumns.js";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
@@ -138,10 +139,6 @@ export default function OrdersList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
   const status = searchParams.get("status") || "";
-  const ordering = searchParams.get("ordering") || DEFAULT_ORDERING;
-  const channel = searchParams.get("channel") || "";
-  const paymentStatus = searchParams.get("payment_status") || "";
-  const fulfillmentStatus = searchParams.get("fulfillment_status") || "";
 
   const updateParams = (updates) => {
     setSearchParams(
@@ -184,58 +181,20 @@ export default function OrdersList() {
     });
   };
 
-  const sorting = useMemo(
-    () => [{ id: ordering.replace(/^-/, ""), desc: ordering.startsWith("-") }],
-    [ordering]
-  );
-  const columnFilters = useMemo(
-    () =>
-      [
-        { id: "channel", value: channel },
-        { id: "payment", value: paymentStatus },
-        { id: "fulfillment", value: fulfillmentStatus },
-      ].filter((f) => f.value),
-    [channel, paymentStatus, fulfillmentStatus]
-  );
-  const table = useReactTable({
-    data: [],
+  const { table, orderingParam, filterParams, activeFilters, clearFilters } = useServerColumns({
     columns: COLUMNS,
-    state: { sorting, columnFilters },
-    manualSorting: true,
-    manualFiltering: true,
-    enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    onSortingChange: (updater) => {
-      const [next] = typeof updater === "function" ? updater(sorting) : updater;
-      updateParams({ ordering: next ? (next.desc ? "-" : "") + next.id : null, page: null });
-    },
-    onColumnFiltersChange: (updater) => {
-      const next = typeof updater === "function" ? updater(columnFilters) : updater;
-      const value = (id) => next.find((f) => f.id === id)?.value ?? null;
-      updateParams({
-        channel: value("channel"),
-        payment_status: value("payment"),
-        fulfillment_status: value("fulfillment"),
-        page: null,
-      });
-    },
+    defaultOrdering: DEFAULT_ORDERING,
   });
-  const activeFilters = columnFilters.length;
 
   const searchParam = debouncedSearch || undefined;
-  const filterParams = {
-    channel: channel || undefined,
-    payment_status: paymentStatus || undefined,
-    fulfillment_status: fulfillmentStatus || undefined,
-    search: searchParam,
-  };
   const { data, isFetching, error, refetch } = useGetOrdersQuery({
     page,
     status: status || undefined,
-    ordering: ordering === DEFAULT_ORDERING ? undefined : ordering,
+    ordering: orderingParam,
     ...filterParams,
+    search: searchParam,
   });
-  const { data: statusSummary } = useGetOrderStatusSummaryQuery(filterParams);
+  const { data: statusSummary } = useGetOrderStatusSummaryQuery({ ...filterParams, search: searchParam });
   // Held visible for a moment even when the API answers instantly, so the user sees something happened.
   const loading = useMinimumLoading(isFetching);
   const rows = data?.rows ?? [];
@@ -266,7 +225,7 @@ export default function OrdersList() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => updateParams({ channel: null, payment_status: null, fulfillment_status: null, page: null })}
+            onClick={clearFilters}
           >
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
           </Button>

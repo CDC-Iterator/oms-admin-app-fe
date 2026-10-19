@@ -22,7 +22,7 @@ export function ColumnHeader({ column, title, align = "left" }) {
   const SortIcon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
 
   return (
-    <div className={cn("flex items-center gap-0.5", align === "right" && "justify-end")}>
+    <div className={cn("flex items-center gap-0.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
       {sortable ? (
         <button
           type="button"
