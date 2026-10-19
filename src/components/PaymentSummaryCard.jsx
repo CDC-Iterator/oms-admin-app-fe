@@ -16,10 +16,10 @@ const STATUS = {
 
 function Row({ label, detail, amount, strong }) {
   return (
-    <div className={"grid grid-cols-[7rem_1fr_auto] items-baseline gap-3 py-0.5 text-xs " + (strong ? "font-semibold" : "")}>
+    <div className={"grid grid-cols-[7rem_1fr_auto] items-baseline gap-3 py-0.5 text-sm " + (strong ? "font-semibold" : "")}>
       <span>{label}</span>
       <span className="min-w-0 truncate font-normal text-muted-foreground">{detail}</span>
-      <span className="tabular-nums">{amount}</span>
+      <span className={"tabular-nums " + (strong ? "" : "font-medium")}>{amount}</span>
     </div>
   );
 }
