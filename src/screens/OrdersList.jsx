@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { FulfilledByBadge } from "../components/FulfilledByBadge.jsx";
+import { LineProduct, OrderItemsSummary } from "../components/LineProduct.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
@@ -27,7 +28,7 @@ const CHANNELS = [
   { value: "pos", label: "POS" },
 ];
 
-const COLUMN_COUNT = 11;
+const COLUMN_COUNT = 12;
 
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
@@ -60,7 +61,7 @@ function LineItemsRow({ orderId }) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-8 text-[0.65rem]">SKU</TableHead>
+                  <TableHead className="h-8 text-[0.65rem]">Product</TableHead>
                   <TableHead className="h-8 text-center text-[0.65rem]">Qty</TableHead>
                   <TableHead className="h-8 text-center text-[0.65rem]">Price</TableHead>
                   <TableHead className="h-8 text-[0.65rem]">Unit</TableHead>
@@ -70,7 +71,9 @@ function LineItemsRow({ orderId }) {
               <TableBody>
                 {lineItems.map((li) => (
                   <TableRow key={li.id}>
-                    <TableCell className="font-mono text-xs">{li.external_sku}</TableCell>
+                    <TableCell>
+                      <LineProduct line={li} />
+                    </TableCell>
                     <TableCell className="text-center font-mono text-xs tabular-nums">{li.qty}</TableCell>
                     <TableCell className="text-center font-mono text-xs tabular-nums">
                       {Number(li.price ?? 0).toLocaleString("en-IN")}
@@ -249,6 +252,7 @@ export default function OrdersList() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-8 w-8 border-b-2 border-border" />
                 <TableHead className="h-8 border-b-2 border-border">Order</TableHead>
+                <TableHead className="h-8 border-b-2 border-border">Items</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Invoice</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Date</TableHead>
                 <TableHead className="h-8 border-b-2 border-border">Channel</TableHead>
@@ -277,6 +281,9 @@ export default function OrdersList() {
                         <Link to={`/orders/${row.id}`} className="text-primary hover:underline" title={row.external_order_id}>
                           {row.order_name || row.external_order_id}
                         </Link>
+                      </TableCell>
+                      <TableCell className="py-1.5">
+                        <OrderItemsSummary items={row.items} />
                       </TableCell>
                       <TableCell className="py-1.5 font-mono text-xs">{row.invoice_id || "—"}</TableCell>
                       <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">

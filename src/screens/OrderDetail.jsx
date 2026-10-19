@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { ChannelBadge } from "@/components/ChannelBadge.jsx";
 import { EmptyState } from "@/components/empty-state.jsx";
+import { LineProduct } from "../components/LineProduct.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { LineActionDialog } from "@/components/LineActionDialog.jsx";
 import { LineActionsCard } from "@/components/LineActionsCard.jsx";
@@ -393,8 +394,11 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
                 <p className="text-xs font-medium text-muted-foreground uppercase">Shipping</p>
                 {shippableLines.map((li) => (
                   <div key={li.id} className="flex items-center justify-between text-sm">
-                    <span className="font-mono text-xs">{li.external_sku}</span>
-                    <span className="text-xs text-muted-foreground">{li.remaining} unit(s)</span>
+                    <span className="min-w-0 truncate text-xs" title={li.external_sku}>
+                      {li.title || li.external_sku}
+                      {li.variant_title && <span className="text-muted-foreground"> · {li.variant_title}</span>}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{li.remaining} unit(s)</span>
                   </div>
                 ))}
               </div>
@@ -676,12 +680,12 @@ export default function OrderDetail() {
                       <Table className="table-fixed">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[24%]">SKU</TableHead>
-                            <TableHead className="w-[15%]">External SKU</TableHead>
-                            <TableHead className="w-[8%] text-right">Qty</TableHead>
+                            <TableHead className="w-[30%]">Product</TableHead>
+                            <TableHead className="w-[14%]">SKU</TableHead>
+                            <TableHead className="w-[7%] text-right">Qty</TableHead>
                             <TableHead className="w-[10%] text-right">Price</TableHead>
-                            <TableHead className="w-[25%]">Suggested / reserved unit</TableHead>
-                            <TableHead className="w-[18%]" />
+                            <TableHead className="w-[22%]">Suggested / reserved unit</TableHead>
+                            <TableHead className="w-[17%]" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -697,12 +701,15 @@ export default function OrderDetail() {
                                       aria-label={`Select ${line.external_sku} for a shipment`}
                                     />
                                   )}
-                                  {line.sku || "—"}
+                                  <LineProduct line={line} showSku={false} />
                                   {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
                                 </div>
                               </TableCell>
-                              <TableCell className="font-mono text-xs text-muted-foreground">
-                                {line.external_sku}
+                              <TableCell className="font-mono text-xs">
+                                {line.sku || "—"}
+                                {line.external_sku && line.external_sku !== line.sku && (
+                                  <p className="text-muted-foreground">{line.external_sku}</p>
+                                )}
                               </TableCell>
                               <TableCell className="font-mono tabular-nums text-right">{qty}</TableCell>
                               <TableCell className="font-mono tabular-nums text-right">
