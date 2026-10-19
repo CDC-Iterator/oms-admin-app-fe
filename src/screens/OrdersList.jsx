@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
+import { ArrowDown, ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import { formatApiError } from "../lib/errors.js";
+import { formatPlacedDate } from "../lib/utils.js";
 import { fulfillmentTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
@@ -272,14 +273,16 @@ export default function OrdersList() {
                 <TableHead className="h-8 w-[3%] border-b-2 border-border" />
                 <TableHead className="h-8 w-[9%] border-b-2 border-border">Order</TableHead>
                 <TableHead className="h-8 w-[10%] border-b-2 border-border">Invoice</TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border">Date</TableHead>
+                <TableHead className="h-8 w-[12%] border-b-2 border-border">
+                  <span className="inline-flex items-center gap-1">Date <ArrowDown className="size-3" aria-label="Newest first" /></span>
+                </TableHead>
                 <TableHead className="h-8 w-[8%] border-b-2 border-border">Channel</TableHead>
                 <TableHead className="h-8 w-[12%] border-b-2 border-border">Customer</TableHead>
                 <TableHead className="h-8 w-[8%] border-b-2 border-border text-right">Total</TableHead>
                 <TableHead className="h-8 w-[12%] border-b-2 border-border">Payment</TableHead>
                 <TableHead className="h-8 w-[10%] border-b-2 border-border">Fulfillment</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Delivery</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Destination</TableHead>
+                <TableHead className="h-8 w-[8%] border-b-2 border-border">Delivery</TableHead>
+                <TableHead className="h-8 w-[8%] border-b-2 border-border">Destination</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
@@ -311,9 +314,7 @@ export default function OrdersList() {
                         </Link>
                       </TableCell>
                       <TableCell className={"truncate py-1.5 font-mono text-xs" + strike} title={row.invoice_id || undefined}>{invoiceLabel}</TableCell>
-                      <TableCell className={"py-1.5 font-mono text-xs text-muted-foreground" + strike}>
-                        {row.placed_at || row.created_at ? new Date(row.placed_at ?? row.created_at).toLocaleDateString() : "—"}
-                      </TableCell>
+                      <TableCell className={"truncate py-1.5 text-xs" + strike}>{formatPlacedDate(row.placed_at ?? row.created_at)}</TableCell>
                       <TableCell className="py-1.5">
                         <ChannelBadge channel={row.channel} />
                       </TableCell>
