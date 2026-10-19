@@ -698,8 +698,6 @@ export default function OrderDetail() {
                   <dd className="min-w-0 break-words font-mono">{order.invoice_id || "—"}</dd>
                   <dt className="text-[11px] text-muted-foreground uppercase">Delivery</dt>
                   <dd className="min-w-0 break-words">{order.delivery_method || "—"}</dd>
-                  <dt className="text-[11px] text-muted-foreground uppercase">Location</dt>
-                  <dd className="min-w-0 break-words font-mono">{order.allocated_location || "—"}</dd>
                 </dl>
               </CardContent>
             </Card>
