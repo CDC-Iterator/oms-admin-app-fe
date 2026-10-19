@@ -6,6 +6,7 @@ import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { LineProduct } from "../components/LineProduct.jsx";
 import Pagination from "../components/Pagination.jsx";
+import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Checkbox } from "@/components/ui/checkbox.jsx";
@@ -158,12 +159,12 @@ export default function FulfillmentLines() {
                 <TableHead className="w-[11%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
-                <TableHead className="w-[28%] border-b-2 border-border">
+                <TableHead className="w-[25%] border-b-2 border-border">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item" />
                 </TableHead>
                 <TableHead className="w-[4%] border-b-2 border-border text-center">Qty</TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">Barcode</TableHead>
-                <TableHead className="w-[18%] border-b-2 border-border">Allocated location</TableHead>
+                <TableHead className="w-[23%] border-b-2 border-border">Barcode</TableHead>
+                <TableHead className="w-[13%] border-b-2 border-border">Allocated location</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
@@ -189,8 +190,14 @@ export default function FulfillmentLines() {
                     <LineProduct line={row} layout="card" />
                   </TableCell>
                   <TableCell className="text-center font-mono tabular-nums">{row.qty}</TableCell>
-                  <TableCell className="font-mono">
-                    {row.units.map((u) => u.barcode).join(", ")}
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {row.units.map((u) => (
+                        <StatusBadge key={u.barcode} tone="success" className="status-chip--compact">
+                          {u.barcode} @ {u.location}
+                        </StatusBadge>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell className="truncate" title={row.allocated_location || undefined}>
                     {row.allocated_location || "—"}
