@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart3,
   Boxes,
+  PackageCheck,
   LayoutDashboard,
   LogOut,
   PackageSearch,
@@ -34,6 +35,7 @@ import { useAuth } from "@/hooks/useAuth.js";
 const NAV_ITEMS = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Orders", url: "/orders", icon: Receipt },
+  { title: "Fulfillments", url: "/fulfillments", icon: PackageCheck },
   { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
 

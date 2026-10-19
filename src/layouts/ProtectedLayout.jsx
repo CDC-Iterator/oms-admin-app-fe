@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth.js";
 const PAGE_TITLES = {
   "/": "Dashboard",
   "/orders": "Orders",
+  "/fulfillments": "Fulfillments",
   "/reports": "Reports",
   "/catalog/products": "Product Master",
   "/catalog/inventory": "Inventory",

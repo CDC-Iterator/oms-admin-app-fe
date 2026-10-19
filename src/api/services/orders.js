@@ -12,6 +12,12 @@ export const ordersApi = omsApi.injectEndpoints({
       transformResponse: unwrapList,
       providesTags: ["orders"],
     }),
+    // One row per unfulfilled order line that already has a confirmed unit.
+    getFulfillmentLines: builder.query({
+      query: (params) => ({ url: "/api/orders/fulfillment-lines/", params }),
+      transformResponse: unwrapList,
+      providesTags: ["orders"],
+    }),
     getOrder: builder.query({
       query: (id) => ({ url: `/api/orders/${id}/` }),
       providesTags: ["orders"],
@@ -61,6 +67,7 @@ export const ordersApi = omsApi.injectEndpoints({
 
 export const {
   useGetOrdersQuery,
+  useGetFulfillmentLinesQuery,
   useGetOrderQuery,
   useGetOrderStatusSummaryQuery,
   usePostOrderEventMutation,
