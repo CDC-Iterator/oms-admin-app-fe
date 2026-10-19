@@ -35,11 +35,14 @@ export function useServerColumns({ columns: definitions, defaultOrdering }) {
     state: { sorting, columnFilters },
     manualSorting: true,
     manualFiltering: true,
-    enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: (updater) => {
       const [next] = typeof updater === "function" ? updater(sorting) : updater;
-      update({ ordering: next ? (next.desc ? "-" : "") + next.id : null });
+      // Third click clears back to the default; on the default column that would be a no-op, so it flips instead.
+      const flipDefault = !next && ordering === defaultOrdering;
+      const key = ordering.replace(/^-/, "");
+      const target = flipDefault ? (ordering.startsWith("-") ? key : `-${key}`) : next ? (next.desc ? "-" : "") + next.id : null;
+      update({ ordering: target });
     },
     onColumnFiltersChange: (updater) => {
       const next = typeof updater === "function" ? updater(columnFilters) : updater;
