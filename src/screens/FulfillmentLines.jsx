@@ -158,7 +158,7 @@ export default function FulfillmentLines() {
           aria-busy={isFetching}
           className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1"
         >
-          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
+          <Table className="min-w-[1200px] table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[3%] shadow-[inset_0_-1px_0_0_var(--border)]">
@@ -170,25 +170,28 @@ export default function FulfillmentLines() {
                     aria-label="Select all lines on this page"
                   />
                 </TableHead>
-                <TableHead className="w-[33%] shadow-[inset_0_-1px_0_0_var(--border)]">
+                <TableHead className="w-[22%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item" />
                 </TableHead>
-                <TableHead className="w-[9%] shadow-[inset_0_-1px_0_0_var(--border)]">
+                <TableHead className="w-[8%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("order")} title="Order" />
                 </TableHead>
-                <TableHead className="w-[12%] shadow-[inset_0_-1px_0_0_var(--border)]">Invoice</TableHead>
-                <TableHead className="w-[11%] shadow-[inset_0_-1px_0_0_var(--border)]">
+                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Invoice</TableHead>
+                <TableHead className="w-[9%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
-                <TableHead className="w-[4%] shadow-[inset_0_-1px_0_0_var(--border)] text-center">Qty</TableHead>
-                <TableHead className="w-[13%] shadow-[inset_0_-1px_0_0_var(--border)]">Barcode</TableHead>
-                <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
+                <TableHead className="w-[3%] shadow-[inset_0_-1px_0_0_var(--border)] text-center">Qty</TableHead>
+                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Barcode</TableHead>
+                <TableHead className="w-[11%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("allocated_location")} title="Allocated location" />
                 </TableHead>
+                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Customer</TableHead>
+                <TableHead className="w-[7%] shadow-[inset_0_-1px_0_0_var(--border)]">Delivery</TableHead>
+                <TableHead className="w-[7%] shadow-[inset_0_-1px_0_0_var(--border)]">Destination</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
-              {rows.length === 0 && <TableEmptyRow colSpan={8} />}
+              {rows.length === 0 && <TableEmptyRow colSpan={11} />}
               {rows.map((row) => (
                 <TableRow key={row.line_id} data-state={selected.has(row.line_id) ? "selected" : undefined}>
                   <TableCell>
@@ -224,6 +227,18 @@ export default function FulfillmentLines() {
                   </TableCell>
                   <TableCell className="truncate" title={row.allocated_location || undefined}>
                     {row.allocated_location || "—"}
+                  </TableCell>
+                  <TableCell className="truncate" title={row.customer_name || undefined}>
+                    {row.customer_name || "—"}
+                  </TableCell>
+                  <TableCell className="truncate" title={row.delivery_method || undefined}>
+                    {row.delivery_method || "—"}
+                  </TableCell>
+                  <TableCell
+                    className="truncate"
+                    title={[row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ") || undefined}
+                  >
+                    {[row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ") || "—"}
                   </TableCell>
                 </TableRow>
               ))}
