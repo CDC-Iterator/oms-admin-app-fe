@@ -47,7 +47,7 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
   const canReturn = isAdmin && group.shipmentRef?.status === "delivered" && line.can_return;
   const hasUnit = isOpen;
   return (
-    <div className="space-y-2 py-3 first:pt-0 last:pb-0 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border/60">
+    <div className="py-2.5 first:pt-0 last:pb-0 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border/60">
       <div className="flex items-start gap-3">
         {checkboxColumn &&
           (showCheckbox ? (
@@ -62,6 +62,7 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
             <span className="size-4 shrink-0" aria-hidden />
           ))}
         <LineProduct line={line} layout="card">
+          {hasUnit && line.sku && renderUnit(line)}
           {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
         </LineProduct>
         <div className="flex shrink-0 items-center gap-3 pt-1 text-sm tabular-nums">
@@ -99,11 +100,6 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
           )}
         </div>
       </div>
-      {hasUnit && (
-        <div className={"flex flex-wrap items-center gap-2 " + (checkboxColumn ? "pl-[4.75rem]" : "pl-[3.75rem]")}>
-          {renderUnit(line)}
-        </div>
-      )}
     </div>
   );
 }

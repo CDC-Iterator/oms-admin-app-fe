@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.jsx";
 
@@ -18,17 +18,18 @@ function pageTokens(current, total) {
 }
 
 /** Numbered pagination — `page` is 1-indexed, matching DRF's PageNumberPagination `?page=`. */
-export default function Pagination({ page, pageSize, count, onPageChange }) {
+export default function Pagination({ page, pageSize, count, onPageChange, loading = false }) {
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
   if (totalPages <= 1) return null;
 
   return (
     <div className="flex items-center justify-between gap-3 pt-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         Page {page} of {totalPages} · {count} total
+        {loading && <Loader2 className="size-3 animate-spin" aria-label="Loading" />}
       </p>
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">
+        <Button variant="outline" size="icon-sm" disabled={loading || page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">
           <ChevronLeft className="size-3.5" />
         </Button>
         {pageTokens(page, totalPages).map((token, i) =>
@@ -41,6 +42,7 @@ export default function Pagination({ page, pageSize, count, onPageChange }) {
               key={token}
               variant={token === page ? "default" : "outline"}
               size="icon-sm"
+              disabled={loading}
               className="font-mono tabular-nums"
               onClick={() => onPageChange(token)}
             >
@@ -51,7 +53,7 @@ export default function Pagination({ page, pageSize, count, onPageChange }) {
         <Button
           variant="outline"
           size="icon-sm"
-          disabled={page >= totalPages}
+          disabled={loading || page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           aria-label="Next page"
         >
