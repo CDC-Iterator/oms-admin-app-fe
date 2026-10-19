@@ -433,19 +433,19 @@ export default function ProductsList() {
                 table doesn't use — a per-cell border always renders). */}
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[45%] border-b-2 border-border">
+                <TableHead className="w-[45%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("product")} title="Variant" />
                 </TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">
+                <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                 </TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">
+                <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("shopify")} title="Shopify" align="center" />
                 </TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">
+                <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("tatacliq")} title="TataCliq" align="center" />
                 </TableHead>
-                <TableHead className="w-[10%] border-b-2 border-border">Actions</TableHead>
+                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

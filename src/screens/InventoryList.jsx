@@ -313,20 +313,20 @@ export default function InventoryList() {
               <>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[40%] border-b-2 border-border">
+                    <TableHead className="w-[40%] shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("product")} title="Product/Location" />
                     </TableHead>
-                    <TableHead className="border-b-2 border-border">
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
                     {/* Quantity sorts would scatter the per-sku groups, so they only apply to a location tab. */}
-                    <TableHead className="border-b-2 border-border text-center">Committed</TableHead>
-                    <TableHead className="border-b-2 border-border text-center">Available</TableHead>
-                    <TableHead className="border-b-2 border-border text-center">On hand</TableHead>
-                    <TableHead className="border-b-2 border-border">
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">Committed</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">Available</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">On hand</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("level")} title="Level" align="center" />
                     </TableHead>
-                    <TableHead className="w-[10%] border-b-2 border-border">Actions</TableHead>
+                    <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -416,25 +416,25 @@ export default function InventoryList() {
               <>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[40%] border-b-2 border-border">
+                    <TableHead className="w-[40%] shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("product")} title="Product" />
                     </TableHead>
-                    <TableHead className="border-b-2 border-border">
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
-                    <TableHead className="border-b-2 border-border">
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("committed")} title="Committed" align="center" />
                     </TableHead>
-                    <TableHead className="border-b-2 border-border">
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("available")} title="Available" align="center" />
                     </TableHead>
-                    <TableHead className="border-b-2 border-border">
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("on_hand")} title="On hand" align="center" />
                     </TableHead>
-                    <TableHead className="border-b-2 border-border">
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("level")} title="Level" align="center" />
                     </TableHead>
-                    <TableHead className="w-[10%] border-b-2 border-border">Actions</TableHead>
+                    <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

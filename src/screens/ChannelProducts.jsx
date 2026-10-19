@@ -349,20 +349,20 @@ export default function ChannelProducts() {
           <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-7">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[35%] border-b-2 border-border">
+                <TableHead className="w-[35%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("product")} title="Product" />
                 </TableHead>
-                <TableHead className="border-b-2 border-border">Channel</TableHead>
-                <TableHead className="border-b-2 border-border">
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Channel</TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("vendor")} title="Vendor" />
                 </TableHead>
-                <TableHead className="border-b-2 border-border">
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("sku")} title="SKU" />
                 </TableHead>
-                <TableHead className="border-b-2 border-border">
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("price")} title="Price" align="center" />
                 </TableHead>
-                <TableHead className="w-[15%] border-b-2 border-border">
+                <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("mapping")} title="Mapping" align="center" />
                 </TableHead>
               </TableRow>
