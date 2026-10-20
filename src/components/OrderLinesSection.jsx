@@ -23,7 +23,7 @@ function GroupHeading({ icon: Icon, tone, title, reference, children }) {
       >
         <Icon className="size-4" />
       </span>
-      <h3 className="text-base font-semibold">{title}</h3>
+      <h3 className="text-sm font-semibold">{title}</h3>
       {reference && <span className="text-sm text-muted-foreground">{reference}</span>}
       <div className="ml-auto flex items-center gap-2">{children}</div>
     </div>
@@ -47,13 +47,13 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
   const canReturn = isAdmin && group.shipmentRef?.status === "delivered" && line.can_return;
   const hasUnit = isOpen;
   return (
-    <div className="py-2.5 first:pt-0 last:pb-0 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border/60">
+    <div className="py-1.5 first:pt-0 last:pb-0 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border/60">
       <div className="flex items-start gap-3">
         {checkboxColumn &&
           (showCheckbox ? (
             <input
               type="checkbox"
-              className="mt-4 size-4 shrink-0"
+              className="mt-2.5 size-4 shrink-0"
               checked={selected}
               onChange={(e) => onToggle(line.id, e.target.checked)}
               aria-label={`Select ${line.title || line.external_sku} for a shipment`}
@@ -66,10 +66,10 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
           {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
         </LineProduct>
         <div className="flex shrink-0 items-center gap-3 pt-1 text-sm tabular-nums">
-          <span className="w-24 text-right text-muted-foreground">{inr(line.price)}</span>
+          <span className="w-20 text-right text-muted-foreground">{inr(line.price)}</span>
           <span className="text-muted-foreground">×</span>
           <span className="rounded-md bg-muted px-2 py-0.5 font-medium">{qty}</span>
-          <span className="w-28 text-right font-medium">{inr(Number(line.price ?? 0) * qty)}</span>
+          <span className="w-24 text-right font-medium">{inr(Number(line.price ?? 0) * qty)}</span>
           {canCancel || canReturn ? (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -124,15 +124,15 @@ export function OrderLinesSection({
   const orderName = order.order_name || order.external_order_id;
   let shipmentNumber = 0;
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold">Lines</h2>
+    <section className="space-y-3">
+      <h2 className="text-base font-semibold">Lines</h2>
 
       {lineGroups.map((group) => {
         if (group.removed) {
           return (
-            <div key={group.key} className="space-y-2">
-              <h3 className="text-base font-semibold">Removed</h3>
-              <div className="rounded-2xl bg-card p-4 shadow-xs ring-1 ring-border">
+            <div key={group.key} className="space-y-1.5">
+              <h3 className="text-sm font-semibold">Removed</h3>
+              <div className="rounded-xl bg-card p-3 shadow-xs ring-1 ring-border">
                 {group.entries.map((entry) => (
                   <LineRow
                     key={`${group.key}-${entry.line.id}`}
@@ -171,7 +171,7 @@ export function OrderLinesSection({
         const chipLabel = channel ? channel.shipment_status?.replace(/_/g, " ") : trackingLabel;
 
         return (
-          <div key={group.key} className="space-y-2">
+          <div key={group.key} className="space-y-1.5">
             <GroupHeading
               icon={isOpen ? PackageOpen : PackageCheck}
               tone={isOpen ? "pending" : "done"}
@@ -198,9 +198,9 @@ export function OrderLinesSection({
               )}
             </GroupHeading>
 
-            <div className="rounded-2xl bg-card p-4 shadow-xs ring-1 ring-border">
+            <div className="rounded-xl bg-card p-3 shadow-xs ring-1 ring-border">
               {(ref || channel || order.allocated_location) && (
-                <div className="mb-3 space-y-1.5 border-b border-border pb-3">
+                <div className="mb-2 space-y-1 border-b border-border pb-2">
                   <div className="flex items-center justify-between gap-2">
                     {chipStatus ? <StatusBadge tone={shipmentTone(chipStatus)}>{chipLabel}</StatusBadge> : <span />}
                     <LocationPill name={locationName} />

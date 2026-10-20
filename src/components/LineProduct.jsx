@@ -26,23 +26,27 @@ export function ProductThumb({ src, alt = "", className }) {
   );
 }
 
-/** An order line's product: image, title (wraps to two lines) and variant, with the SKU underneath.
+/** An order line's product: image, title (wraps to two lines) and variant, with the SKU underneath. `dense` shrinks that second line.
  *  `layout="card"` is the roomier Shopify-style row: bigger thumbnail, variant and SKU as chips. */
-export function LineProduct({ line, showSku = true, layout = "compact", children }) {
+export function LineProduct({ line, showSku = true, layout = "compact", dense = false, children }) {
   if (layout === "card") {
     return (
-      <div className="flex min-w-0 flex-1 items-start gap-3 font-sans">
-        <ProductThumb src={line.image_url} alt={line.title} className="size-12 rounded-lg" />
+      <div className={cn("flex min-w-0 flex-1 gap-3 font-sans", dense ? "items-center" : "items-start")}>
+        <ProductThumb src={line.image_url} alt={line.title} className="size-9 rounded-md" />
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 break-words text-sm font-semibold leading-snug" title={line.title}>
             {line.title || line.external_sku || "Untitled product"}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {line.variant_title && (
-              <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium">{line.variant_title}</span>
+              <span className={cn("rounded-md bg-muted px-1.5 py-0.5 font-medium", dense ? "text-[0.65rem]" : "text-xs")}>
+                {line.variant_title}
+              </span>
             )}
             {showSku && line.external_sku && (
-              <span className="font-mono text-xs text-muted-foreground">{line.external_sku}</span>
+              <span className={cn("font-mono text-muted-foreground", dense ? "text-[0.65rem]" : "text-xs")}>
+                {line.external_sku}
+              </span>
             )}
             {children}
           </div>

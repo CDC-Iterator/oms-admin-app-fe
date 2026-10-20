@@ -13,6 +13,7 @@ import Dashboard from "./screens/Dashboard.jsx";
 import InventoryList from "./screens/InventoryList.jsx";
 import LocationsList from "./screens/LocationsList.jsx";
 import OrderDetail from "./screens/OrderDetail.jsx";
+import FulfillmentLines from "./screens/FulfillmentLines.jsx";
 import OrdersList from "./screens/OrdersList.jsx";
 import ProductsList from "./screens/ProductsList.jsx";
 import Profile from "./screens/Profile.jsx";
@@ -37,6 +38,7 @@ function AppRoutes() {
       <Route element={<ProtectedLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/orders" element={<OrdersList />} />
+        <Route path="/fulfillments" element={<FulfillmentLines />} />
         <Route path="/orders/:id" element={<OrderDetail />} />
         <Route path="/catalog/products" element={<ProductsList />} />
         <Route path="/catalog/inventory" element={<InventoryList />} />

@@ -26,15 +26,15 @@ export function LineActionsCard({ lineItems, isAdmin }) {
   if (rows.length === 0) return null;
 
   return (
-    <Card>
+    <Card size="sm">
       <CardHeader>
         <CardTitle className="text-sm font-medium">Cancels &amp; returns</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         {rows.map((a) => {
           const failed = a.shopify_status === "failed" || a.pos_status === "failed";
           return (
-            <div key={a.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg ring-1 ring-border p-3">
+            <div key={a.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg ring-1 ring-border p-2.5">
               <div className="space-y-0.5 text-sm">
                 <p className="font-medium capitalize">
                   {a.action} · <span className="font-mono">{a.sku}</span> × {a.qty}

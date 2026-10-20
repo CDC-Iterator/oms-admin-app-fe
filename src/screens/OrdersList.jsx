@@ -1,8 +1,11 @@
 import { Fragment, useEffect, useState } from "react";
+import { flexRender } from "@tanstack/react-table";
 import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
+import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
+import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { FulfilledByBadge } from "../components/FulfilledByBadge.jsx";
 import { LineProduct } from "../components/LineProduct.jsx";
@@ -11,25 +14,46 @@ import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
-import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
+import { useServerColumns } from "../hooks/useServerColumns.js";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import { formatApiError } from "../lib/errors.js";
+import { formatPlacedDate } from "../lib/utils.js";
 import { fulfillmentTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
 
 // Order.channel choices — apps.channels.models.
 const CHANNELS = [
-  { value: "", label: "All channels" },
   { value: "shopify", label: "Shopify" },
   { value: "tatacliq", label: "TataCliq" },
   { value: "pos", label: "POS" },
 ];
 
-const COLUMN_COUNT = 11;
+const PAYMENT_STATUSES = ["paid", "partially_paid", "pending", "refunded", "partially_refunded", "voided"].map((v) => ({
+  value: v,
+  label: v.replace("_", " "),
+}));
+const FULFILLMENT_STATUSES = ["unfulfilled", "partial", "fulfilled", "restocked"].map((v) => ({ value: v, label: v }));
+
+// TanStack column ids are the backend's ?ordering= keys / filter params (apps.orders.views).
+const COLUMNS = [
+  { id: "expand", header: "", size: 2.5, enableSorting: false },
+  { id: "order", header: "Order", size: 8, meta: { filterIds: true, filterParam: "order_ids" } },
+  { id: "invoice", header: "Invoice", size: 9, enableSorting: false },
+  { id: "placed_at", header: "Date", size: 11.5 },
+  { id: "channel", header: "Channel", size: 7, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
+  { id: "customer", header: "Customer", size: 12, enableSorting: false },
+  { id: "total", header: "Total", size: 6.5, align: "right" },
+  { id: "payment", header: "Payment", size: 11, enableSorting: false, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status" } },
+  { id: "fulfillment", header: "Fulfillment", size: 13, enableSorting: false, meta: { filterOptions: FULFILLMENT_STATUSES, filterParam: "fulfillment_status" } },
+  { id: "delivery", header: "Delivery", size: 9.5, enableSorting: false },
+  { id: "destination", header: "Destination", size: 10, enableSorting: false },
+];
+const COLUMN_COUNT = COLUMNS.length;
+const DEFAULT_ORDERING = "-placed_at";
 
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
@@ -106,7 +130,6 @@ function LineItemsRow({ orderId }) {
 }
 
 export default function OrdersList() {
-  const [channel, setChannel] = useState("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 300);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
@@ -142,10 +165,6 @@ export default function OrdersList() {
   // the first run" guard), clobbering ?page=/?status= from a
   // refreshed/shared URL.
   const handleStatusChange = (nextStatus) => updateParams({ status: nextStatus, page: null });
-  const handleChannelChange = (value) => {
-    setChannel(value);
-    setPage(1);
-  };
   const handleSearchChange = (value) => {
     setSearch(value);
     setPage(1);
@@ -163,15 +182,20 @@ export default function OrdersList() {
     });
   };
 
+  const { table, orderingParam, filterParams, activeFilters, clearFilters } = useServerColumns({
+    columns: COLUMNS,
+    defaultOrdering: DEFAULT_ORDERING,
+  });
+
   const searchParam = debouncedSearch || undefined;
-  const channelParam = channel || undefined;
   const { data, isFetching, error, refetch } = useGetOrdersQuery({
     page,
     status: status || undefined,
-    channel: channelParam,
+    ordering: orderingParam,
+    ...filterParams,
     search: searchParam,
   });
-  const { data: statusSummary } = useGetOrderStatusSummaryQuery({ channel: channelParam, search: searchParam });
+  const { data: statusSummary } = useGetOrderStatusSummaryQuery({ ...filterParams, search: searchParam });
   // Held visible for a moment even when the API answers instantly, so the user sees something happened.
   const loading = useMinimumLoading(isFetching);
   const rows = data?.rows ?? [];
@@ -198,13 +222,15 @@ export default function OrdersList() {
             />
           )}
         </div>
-        <Select value={channel} onChange={(e) => handleChannelChange(e.target.value)}>
-          {CHANNELS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
+        {activeFilters > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={clearFilters}
+          >
+            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
+          </Button>
+        )}
       </div>
 
       <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
@@ -246,9 +272,9 @@ export default function OrdersList() {
             </Button>
           }
         />
-      ) : isFetching && (!data || rows.length === 0) ? (
+      ) : isFetching && !data ? (
         <Skeleton className="h-64 w-full" />
-      ) : rows.length === 0 ? (
+      ) : rows.length === 0 && activeFilters === 0 ? (
         <EmptyState
           icon={Receipt}
           title="No orders found"
@@ -266,23 +292,28 @@ export default function OrdersList() {
               <div className="animate-indeterminate h-full w-1/3 bg-primary" />
             </div>
           )}
-          <Table className="min-w-[1280px] table-fixed">
+          <Table className="min-w-[1100px] table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 w-[3%] border-b-2 border-border" />
-                <TableHead className="h-8 w-[9%] border-b-2 border-border">Order</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Invoice</TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border">Date</TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border">Channel</TableHead>
-                <TableHead className="h-8 w-[12%] border-b-2 border-border">Customer</TableHead>
-                <TableHead className="h-8 w-[8%] border-b-2 border-border text-right">Total</TableHead>
-                <TableHead className="h-8 w-[12%] border-b-2 border-border">Payment</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Fulfillment</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Delivery</TableHead>
-                <TableHead className="h-8 w-[10%] border-b-2 border-border">Destination</TableHead>
+                {table.getHeaderGroups()[0].headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    style={{ width: `${header.column.columnDef.size}%` }}
+                    className={"h-10 shadow-[inset_0_-1px_0_0_var(--border)]" + (header.column.columnDef.align === "right" ? " text-right" : "")}
+                  >
+                    {header.column.columnDef.header && (
+                      <ColumnHeader
+                        column={header.column}
+                        title={flexRender(header.column.columnDef.header, header.getContext())}
+                        align={header.column.columnDef.align}
+                      />
+                    )}
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
+              {rows.length === 0 && <TableEmptyRow colSpan={COLUMN_COUNT} />}
               {rows.map((row) => {
                 const isExpanded = expandedIds.has(row.id);
                 const destination = [row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ");
@@ -294,13 +325,13 @@ export default function OrdersList() {
                 return (
                   <Fragment key={row.id}>
                     <TableRow>
-                      <TableCell className="py-1.5">
-                        <Button variant="ghost" size="icon-sm" onClick={() => toggleExpanded(row.id)}>
+                      <TableCell className="py-1">
+                        <Button variant="ghost" size="icon-sm" className="size-5" onClick={() => toggleExpanded(row.id)}>
                           {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
                           <span className="sr-only">{isExpanded ? "Hide line items" : "Show line items"}</span>
                         </Button>
                       </TableCell>
-                      <TableCell className="py-1.5 font-mono text-xs">
+                      <TableCell className="py-1 font-mono text-xs">
                         <Link
                           to={`/orders/${row.id}`}
                           state={{ orderIds: rows.map((r) => r.id) }}
@@ -310,29 +341,27 @@ export default function OrdersList() {
                           {row.order_name || row.external_order_id}
                         </Link>
                       </TableCell>
-                      <TableCell className={"truncate py-1.5 font-mono text-xs" + strike} title={row.invoice_id || undefined}>{invoiceLabel}</TableCell>
-                      <TableCell className={"py-1.5 font-mono text-xs text-muted-foreground" + strike}>
-                        {row.placed_at || row.created_at ? new Date(row.placed_at ?? row.created_at).toLocaleDateString() : "—"}
+                      <TableCell className={"truncate py-1 font-mono text-xs" + strike} title={row.invoice_id || undefined}>{invoiceLabel}</TableCell>
+                      <TableCell className={"truncate py-1 text-xs" + strike}>{formatPlacedDate(row.placed_at ?? row.created_at)}</TableCell>
+                      <TableCell className="py-1">
+                        <ChannelBadge channel={row.channel} className="status-chip--compact" />
                       </TableCell>
-                      <TableCell className="py-1.5">
-                        <ChannelBadge channel={row.channel} />
-                      </TableCell>
-                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={row.customer_name || undefined}>{row.customer_name || "—"}</TableCell>
-                      <TableCell className={"py-1.5 text-right font-mono text-xs tabular-nums" + strike}>
+                      <TableCell className={"truncate py-1 text-xs" + strike} title={row.customer_name || undefined}>{row.customer_name || "—"}</TableCell>
+                      <TableCell className={"py-1 text-right font-mono text-xs tabular-nums" + strike}>
                         {Number(row.total_amount ?? 0).toLocaleString("en-IN")}
                       </TableCell>
-                      <TableCell className="py-1.5">
+                      <TableCell className="py-1">
                         {row.payment_status ? (
-                          <StatusBadge tone={paymentTone(row.payment_status)}>{row.payment_status}</StatusBadge>
+                          <StatusBadge tone={paymentTone(row.payment_status)} className="status-chip--compact">{row.payment_status}</StatusBadge>
                         ) : (
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="py-1.5">
-                        <StatusBadge tone={fulfillmentTone(row.fulfillment_status)}>{row.fulfillment_status}</StatusBadge>
+                      <TableCell className="py-1">
+                        <StatusBadge tone={fulfillmentTone(row.fulfillment_status)} className="status-chip--compact">{row.fulfillment_status}</StatusBadge>
                       </TableCell>
-                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={row.delivery_method || undefined}>{row.delivery_method || "—"}</TableCell>
-                      <TableCell className={"truncate py-1.5 text-sm" + strike} title={destination || undefined}>{destination || "—"}</TableCell>
+                      <TableCell className={"truncate py-1 text-xs" + strike} title={row.delivery_method || undefined}>{row.delivery_method || "—"}</TableCell>
+                      <TableCell className={"truncate py-1 text-xs" + strike} title={destination || undefined}>{destination || "—"}</TableCell>
                     </TableRow>
                     {isExpanded && <LineItemsRow orderId={row.id} />}
                   </Fragment>
