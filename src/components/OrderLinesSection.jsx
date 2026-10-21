@@ -53,7 +53,7 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
           (showCheckbox ? (
             <input
               type="checkbox"
-              className="mt-2.5 size-4 shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
+              className="oms-checkbox mt-2.5"
               checked={selected && !disabledReason}
               disabled={Boolean(disabledReason)}
               title={disabledReason || undefined}
@@ -168,7 +168,13 @@ export function OrderLinesSection({
         const carrier = channel ? channel.carrier : ref?.carrier_name || ref?.courier;
         const awb = channel ? channel.tracking_number : shipment?.awb_number;
         const trackingUrl = channel ? channel.tracking_url : shipment?.tracking_url;
-        const locationName = channel ? channel.location_name : order.allocated_location;
+        // Where the units on these lines actually sit — an order can span warehouses, so don't assume one.
+        const unitLocations = [...new Set(group.entries.flatMap((e) => e.line.confirmed_unit_locations ?? []))];
+        const locationNames = channel
+          ? [channel.location_name]
+          : unitLocations.length > 0
+            ? unitLocations
+            : [order.allocated_location];
         const chipStatus = channel ? channel.shipment_status : ref?.status;
         const chipLabel = channel ? channel.shipment_status?.replace(/_/g, " ") : trackingLabel;
 
@@ -201,11 +207,15 @@ export function OrderLinesSection({
             </GroupHeading>
 
             <div className="rounded-xl bg-card p-3 shadow-xs ring-1 ring-border">
-              {(ref || channel || order.allocated_location) && (
+              {(ref || channel || order.allocated_location || unitLocations.length > 0) && (
                 <div className="mb-2 space-y-1 border-b border-border pb-2">
                   <div className="flex items-center justify-between gap-2">
                     {chipStatus ? <StatusBadge tone={shipmentTone(chipStatus)}>{chipLabel}</StatusBadge> : <span />}
-                    <LocationPill name={locationName} />
+                    <span className="flex flex-wrap justify-end gap-1">
+                      {locationNames.map((name) => (
+                        <LocationPill key={name} name={name} />
+                      ))}
+                    </span>
                   </div>
                   {(ref || channel) && eventDate && (
                     <p className="flex items-center gap-2 text-sm text-muted-foreground">

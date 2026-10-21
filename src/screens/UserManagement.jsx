@@ -109,7 +109,7 @@ function UserForm({ open, onOpenChange, mode, form, setForm, onSubmit, error, is
             </Select>
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.is_active} onChange={setChecked("is_active")} />
+            <input type="checkbox" className="oms-checkbox" checked={form.is_active} onChange={setChecked("is_active")} />
             Active
           </label>
         </form>

@@ -18,6 +18,11 @@ export const ordersApi = omsApi.injectEndpoints({
       transformResponse: unwrapList,
       providesTags: ["orders"],
     }),
+    // Books one shipment per order and warehouse for the chosen lines; each is queued like a single booking.
+    bookFulfillmentLines: builder.mutation({
+      query: (body) => ({ url: "/api/orders/fulfillment-lines/book/", method: "POST", body }),
+      invalidatesTags: ["orders"],
+    }),
     getOrder: builder.query({
       query: (id) => ({ url: `/api/orders/${id}/` }),
       providesTags: ["orders"],
@@ -67,6 +72,7 @@ export const ordersApi = omsApi.injectEndpoints({
 
 export const {
   useGetOrdersQuery,
+  useBookFulfillmentLinesMutation,
   useGetFulfillmentLinesQuery,
   useGetOrderQuery,
   useGetOrderStatusSummaryQuery,
