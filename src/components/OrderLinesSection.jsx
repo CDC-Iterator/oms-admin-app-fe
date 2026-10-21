@@ -40,7 +40,7 @@ function LocationPill({ name }) {
   );
 }
 
-function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox, selected, onToggle, renderUnit, onLineAction }) {
+function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox, disabledReason, selected, onToggle, renderUnit, onLineAction }) {
   const { line, qty } = entry;
   const isOpen = !group.shipmentRef && !group.channelRef && !group.removed;
   const canCancel = isAdmin && isOpen && line.can_cancel;
@@ -53,8 +53,10 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
           (showCheckbox ? (
             <input
               type="checkbox"
-              className="mt-2.5 size-4 shrink-0"
-              checked={selected}
+              className="mt-2.5 size-4 shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
+              checked={selected && !disabledReason}
+              disabled={Boolean(disabledReason)}
+              title={disabledReason || undefined}
               onChange={(e) => onToggle(line.id, e.target.checked)}
               aria-label={`Select ${line.title || line.external_sku} for a shipment`}
             />
@@ -235,8 +237,15 @@ export function OrderLinesSection({
                     group={group}
                     orderId={orderId}
                     isAdmin={isAdmin}
-                    checkboxColumn={isOpen && isAdmin && group.entries.some((e) => shippableLineIds.has(e.line.id))}
-                    showCheckbox={isOpen && isAdmin && shippableLineIds.has(entry.line.id)}
+                    checkboxColumn={isOpen && isAdmin && order.channel === "shopify" && group.entries.some((e) => !e.line.is_dropship)}
+                    showCheckbox={isOpen && isAdmin && order.channel === "shopify" && !entry.line.is_dropship}
+                    disabledReason={
+                      shippableLineIds.has(entry.line.id)
+                        ? null
+                        : entry.line.is_fully_confirmed
+                          ? "Nothing left to ship on this line"
+                          : "Waiting for a POS booking — bill a unit for this line in POS first"
+                    }
                     selected={selectedLineIds.has(entry.line.id)}
                     onToggle={onToggleLine}
                     renderUnit={renderUnit}
