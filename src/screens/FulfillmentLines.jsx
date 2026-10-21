@@ -23,6 +23,8 @@ import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
 
 const PAGE_SIZE = 50;
+// Column widths live on a <colgroup> so the table keeps its layout when the action bar replaces the header.
+const COLUMN_WIDTHS = [3, 22, 8, 10, 9, 3, 10, 11, 10, 7, 7];
 const COURIERS = [
   { value: "shipway", label: "Shipway" },
   { value: "shipdelight", label: "Shipdelight" },
@@ -181,6 +183,11 @@ export default function FulfillmentLines() {
           className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1"
         >
           <Table className="min-w-[1200px] table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
+            <colgroup>
+              {COLUMN_WIDTHS.map((w, i) => (
+                <col key={i} style={{ width: `${w}%` }} />
+              ))}
+            </colgroup>
             <TableHeader>
               {selected.size > 0 && (
                 <TableRow className="hover:bg-transparent">
