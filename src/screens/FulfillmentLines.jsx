@@ -196,18 +196,18 @@ export default function FulfillmentLines() {
             <TableHeader>
               {selected.size > 0 && (
                 <TableRow className="hover:bg-transparent">
-                  <TableHead colSpan={11} className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
+                  <TableHead className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
+                    <input
+                      type="checkbox"
+                      className="oms-checkbox mx-auto"
+                      checked
+                      onChange={() => setSelected(new Map())}
+                      aria-label="Clear selection"
+                    />
+                  </TableHead>
+                  <TableHead colSpan={10} className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
                     <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        className="oms-checkbox"
-                        checked
-                        onChange={() => setSelected(new Map())}
-                        aria-label="Clear selection"
-                      />
-                      <span className="text-sm font-medium">
-                        {selected.size} selected
-                      </span>
+                      <span className="text-sm font-medium">{selected.size} selected</span>
                       {isAdmin && (
                         <Button size="sm" variant="outline" onClick={() => setBookOpen(true)}>
                           <Truck className="size-3.5" />
