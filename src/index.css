@@ -300,7 +300,8 @@ button:not(:disabled),
 /* Native checkboxes in the theme's colours (the browser default is blue). */
 .oms-checkbox {
   appearance: none;
-  display: inline-grid;
+  display: grid;
+  vertical-align: middle;
   place-content: center;
   width: 1rem;
   height: 1rem;
