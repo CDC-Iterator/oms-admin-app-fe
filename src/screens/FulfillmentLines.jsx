@@ -36,6 +36,11 @@ const COLUMNS = [
   { id: "placed_at", header: "Date" },
 ];
 
+// The warehouse(s) this line's confirmed unit actually sits in — the order's own allocated location is one value
+// for the whole order and can be stale on a split one; it's only the fallback.
+const lineLocation = (row) =>
+  [...new Set(row.units.map((u) => u.location))].join(", ") || row.allocated_location;
+
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -59,7 +64,7 @@ export default function FulfillmentLines() {
         id: "allocated_location",
         enableSorting: false,
         meta: {
-          filterParam: "allocated_location_id",
+          filterParam: "location_id",
           filterOptions: (locations ?? []).map((l) => ({ value: String(l.location_id), label: l.location })),
         },
       },
@@ -281,8 +286,8 @@ export default function FulfillmentLines() {
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell className="truncate" title={row.allocated_location || undefined}>
-                    {row.allocated_location || "—"}
+                  <TableCell className="truncate" title={lineLocation(row) || undefined}>
+                    {lineLocation(row) || "—"}
                   </TableCell>
                   <TableCell className="truncate" title={row.customer_name || undefined}>
                     {row.customer_name || "—"}
