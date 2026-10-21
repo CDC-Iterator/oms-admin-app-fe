@@ -50,11 +50,6 @@ import {
   SUGGESTION_HIDDEN_STATUSES,
 } from "../lib/status.js";
 
-// Mirrors the backend's REQUIRE_CONFIRMED_UNIT_FOR_SHIPMENT (config/
-// settings/base.py) — defaults off since production has no confirmed
-// units yet; flip both once the POS confirm flow is proven.
-const REQUIRE_CONFIRMED_UNIT = import.meta.env.VITE_REQUIRE_CONFIRMED_UNIT === "true";
-
 // Every Shipment.TrackingEventStatus value (apps/fulfilment/models.py),
 // for displaying last_reported_tracking_event_status — the persistent
 // record of the last milestone actually pushed to Shopify.
@@ -561,7 +556,7 @@ export default function OrderDetail() {
           .filter(
             (li) =>
               !li.is_dropship &&
-              (!REQUIRE_CONFIRMED_UNIT || li.is_fully_confirmed) &&
+              li.is_fully_confirmed &&
               li.qty - (shippedByLine[li.id] ?? 0) - (li.channel_fulfilled_qty ?? 0) - (li.removed_qty ?? 0) > 0
           )
           .map((li) => li.id)
