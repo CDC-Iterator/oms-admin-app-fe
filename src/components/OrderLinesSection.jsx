@@ -53,7 +53,7 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
           (showCheckbox ? (
             <input
               type="checkbox"
-              className="mt-2.5 size-4 shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
+              className="oms-checkbox mt-2.5"
               checked={selected && !disabledReason}
               disabled={Boolean(disabledReason)}
               title={disabledReason || undefined}

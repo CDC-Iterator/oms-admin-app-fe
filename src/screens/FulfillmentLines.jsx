@@ -164,7 +164,7 @@ export default function FulfillmentLines() {
                 <TableHead className="w-[3%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <input
                     type="checkbox"
-                    className="size-4"
+                    className="oms-checkbox"
                     checked={pageSelected}
                     onChange={togglePage}
                     aria-label="Select all lines on this page"
@@ -197,7 +197,7 @@ export default function FulfillmentLines() {
                   <TableCell>
                     <input
                       type="checkbox"
-                      className="size-4"
+                      className="oms-checkbox"
                       checked={selected.has(row.line_id)}
                       onChange={() => toggle(row.line_id)}
                       aria-label={`Select ${row.order_name} ${row.external_sku}`}
