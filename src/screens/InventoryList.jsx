@@ -100,12 +100,18 @@ function groupBySku(rows) {
   return groups;
 }
 
+const UNITS_PAGE_SIZE = 50;
+
 function UnitsDrawer({ target, onOpenChange }) {
+  const [page, setPage] = useState(1);
+  // A different SKU/location starts again from the first page.
+  useEffect(() => setPage(1), [target?.skuId, target?.locationId]);
   const { data, isFetching, error } = useGetInventoryUnitsQuery(
-    target ? { sku_id: target.skuId, location_id: target.locationId ?? undefined } : undefined,
+    target ? { sku_id: target.skuId, location_id: target.locationId ?? undefined, page } : undefined,
     { skip: !target }
   );
   const rows = data?.rows ?? [];
+  const count = data?.count ?? 0;
 
   return (
     <Sheet open={Boolean(target)} onOpenChange={onOpenChange}>
@@ -118,44 +124,53 @@ function UnitsDrawer({ target, onOpenChange }) {
           <SheetTitle>Units — {target?.itemCode ?? target?.productTitle}</SheetTitle>
           <SheetDescription>
             {target?.locationLabel ? `At ${target.locationLabel}` : "Across every location"}
+            {data ? ` · ${count} unit${count === 1 ? "" : "s"}` : ""}
           </SheetDescription>
         </SheetHeader>
-        <div className="flex flex-1 flex-col gap-3 px-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 px-4">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{formatApiError(error)}</AlertDescription>
             </Alert>
           )}
-          {isFetching && <Skeleton className="h-24 w-full" />}
+          {isFetching && !data && <Skeleton className="h-24 w-full" />}
           {!isFetching && !error && rows.length === 0 && (
             <p className="text-sm text-muted-foreground">No units found.</p>
           )}
-          {!isFetching && rows.length > 0 && (
-            <div className="overflow-hidden rounded-lg ring-1 ring-border">
-              <Table>
+          {rows.length > 0 && (
+            <div
+              aria-busy={isFetching}
+              className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1"
+            >
+              <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-8 text-[0.65rem]">Barcode</TableHead>
-                    <TableHead className="h-8 text-[0.65rem]">Ownership</TableHead>
-                    <TableHead className="h-8 text-[0.65rem]">Status</TableHead>
-                    <TableHead className="h-8 text-center text-[0.65rem]">Qty</TableHead>
+                    <TableHead className="w-[34%] shadow-[inset_0_-1px_0_0_var(--border)]">Barcode</TableHead>
+                    <TableHead className="w-[26%] shadow-[inset_0_-1px_0_0_var(--border)]">Ownership</TableHead>
+                    <TableHead className="w-[28%] shadow-[inset_0_-1px_0_0_var(--border)]">Status</TableHead>
+                    <TableHead className="w-[12%] text-center shadow-[inset_0_-1px_0_0_var(--border)]">Qty</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
                   {rows.map((unit) => (
                     <TableRow key={unit.id}>
-                      <TableCell className="font-mono text-xs">{unit.barcode}</TableCell>
-                      <TableCell className="text-xs capitalize">{unit.ownership_type}</TableCell>
+                      <TableCell className="truncate font-mono">{unit.barcode}</TableCell>
+                      <TableCell className="truncate capitalize">{unit.ownership_type}</TableCell>
                       <TableCell>
-                        <StatusBadge tone={unitStatusTone(unit.status)}>{unit.status}</StatusBadge>
+                        <StatusBadge tone={unitStatusTone(unit.status)} className="status-chip--compact">
+                          {unit.status}
+                        </StatusBadge>
                       </TableCell>
-                      <TableCell className="text-center font-mono text-xs tabular-nums">{unit.qty}</TableCell>
+                      <TableCell className="text-center font-mono tabular-nums">{unit.qty}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
           )}
+          <div className="shrink-0">
+            <Pagination page={page} pageSize={UNITS_PAGE_SIZE} count={count} onPageChange={setPage} loading={isFetching} />
+          </div>
         </div>
         <SheetFooter />
       </SheetContent>
