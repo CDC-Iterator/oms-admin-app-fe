@@ -76,12 +76,6 @@ export default function LocationsList() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        The stores and warehouses as POS 2.0 names them — mirrored, not managed
-        here. Pick order is how inventory allocation prefers them: warehouses
-        first, then stores, each in zone order (lower zone rank first). Inactive
-        locations are never allocated from.
-      </p>
       <ListEyebrow count={data?.count ?? 0} noun="locations" live={false} />
       <DataTable
         columns={COLUMNS}

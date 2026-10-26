@@ -38,7 +38,8 @@ export default function LocationChannelMapper() {
   const [deleteMapping] = useDeleteLocationMappingMutation();
   const { showToast } = useToast();
 
-  const locations = locData?.rows ?? EMPTY_LIST;
+  // Only active locations feed channel stock, so only they get a card.
+  const locations = useMemo(() => (locData?.rows ?? EMPTY_LIST).filter((l) => l.is_active !== false), [locData]);
 
   const channelLocations = useMemo(() => {
     const list = [];
