@@ -126,23 +126,23 @@ export function AppSidebar({ ...props }) {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        {!opsOnly && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Settings</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
+        <SidebarGroup>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {!opsOnly && (
                 <NavItems items={SETTINGS_ITEMS} pathname={location.pathname} />
-                {(user?.is_superuser || user?.role === "admin") && (
-                  <NavItems
-                    items={SUPER_ADMIN_SETTINGS_ITEMS}
-                    pathname={location.pathname}
-                  />
-                )}
-                <NavItems items={PROFILE_ITEMS} pathname={location.pathname} />
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+              )}
+              {(user?.is_superuser || user?.role === "admin") && (
+                <NavItems
+                  items={SUPER_ADMIN_SETTINGS_ITEMS}
+                  pathname={location.pathname}
+                />
+              )}
+              <NavItems items={PROFILE_ITEMS} pathname={location.pathname} />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
