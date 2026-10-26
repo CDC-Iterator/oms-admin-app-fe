@@ -21,6 +21,15 @@ const COLUMNS = [
     ),
   },
   { key: "city", label: "City" },
+  {
+    key: "is_active",
+    label: "Status",
+    render: (row) => (
+      <StatusBadge tone={row.is_active === false ? "danger" : "success"}>
+        {row.is_active === false ? "Inactive" : "Active"}
+      </StatusBadge>
+    ),
+  },
   { key: "zone", label: "Zone", render: (row) => row.zone || "—" },
   {
     key: "pick_order",
@@ -35,7 +44,11 @@ const COLUMNS = [
 ];
 
 // Allocation picks warehouses before stores, and within each in zone-rank order; equal rank shares a number.
-function withPickOrder(rows) {
+function withPickOrder(allRows) {
+  const rows = allRows.filter((r) => r.is_active !== false);
+  const inactive = allRows
+    .filter((r) => r.is_active === false)
+    .map((r) => ({ ...r, pick_order: null }));
   const tier = (r) => (r.type === "warehouse" ? 0 : 1);
   const rank = (r) => r.zone_rank ?? Number.MAX_SAFE_INTEGER;
   const sorted = [...rows].sort(
@@ -44,12 +57,13 @@ function withPickOrder(rows) {
   );
   let order = 0;
   let prev = null;
-  return sorted.map((row) => {
+  const ranked = sorted.map((row) => {
     const key = `${tier(row)}:${rank(row)}`;
     if (key !== prev) order += 1;
     prev = key;
     return { ...row, pick_order: row.zone_rank == null ? null : order };
   });
+  return [...ranked, ...inactive];
 }
 
 // Read-only — Location rows are POS-mirrored/seeded, not created here.
@@ -65,7 +79,8 @@ export default function LocationsList() {
       <p className="mb-4 text-sm text-muted-foreground">
         The stores and warehouses as POS 2.0 names them — mirrored, not managed
         here. Pick order is how inventory allocation prefers them: warehouses
-        first, then stores, each in zone order (lower zone rank first).
+        first, then stores, each in zone order (lower zone rank first). Inactive
+        locations are never allocated from.
       </p>
       <ListEyebrow count={data?.count ?? 0} noun="locations" live={false} />
       <DataTable
