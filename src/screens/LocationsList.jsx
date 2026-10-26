@@ -68,7 +68,7 @@ function withPickOrder(allRows) {
 
 // Read-only — Location rows are POS-mirrored/seeded, not created here.
 export default function LocationsList() {
-  const { data, isFetching, error, refetch } = useGetLocationsQuery();
+  const { data, isFetching, error, refetch } = useGetLocationsQuery({ include_inactive: true });
   const { user } = useAuth();
   // Matches the backend's IsSuperAdmin gate on /api/channels/connections/ —
   // the mapper fetches its own data, just gated on rendering at all here.

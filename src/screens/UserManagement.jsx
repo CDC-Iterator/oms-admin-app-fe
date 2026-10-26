@@ -312,7 +312,7 @@ export default function UserManagement() {
                     </TableCell>
                     <TableCell className="text-xs">
                       {row.role === "operations"
-                        ? row.locations.map((id) => locationNames[id] ?? id).join(", ") || "None assigned"
+                        ? row.locations.map((id) => locationNames[id]).filter(Boolean).join(", ") || "None assigned"
                         : "All"}
                     </TableCell>
                     <TableCell className="text-center">

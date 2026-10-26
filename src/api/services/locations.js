@@ -6,7 +6,8 @@ import { unwrapList } from "../unwrapList.js";
 export const locationsApi = omsApi.injectEndpoints({
   endpoints: (builder) => ({
     getLocations: builder.query({
-      query: () => ({ url: "/api/locations/" }),
+      // Inactive locations are hidden unless { include_inactive: true } (the Locations screen).
+      query: (params) => ({ url: "/api/locations/", params }),
       transformResponse: unwrapList,
       providesTags: ["locations"],
     }),

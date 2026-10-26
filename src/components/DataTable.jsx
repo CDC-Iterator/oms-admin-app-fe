@@ -25,7 +25,7 @@ const SKELETON_ROWS = 6;
  * screen). A load failure gets the same panel treatment, tinted for
  * failure, with a "Try again" action wired to `onRetry`.
  */
-export default function DataTable({ columns, rows, loading, error, onRetry, empty }) {
+export default function DataTable({ columns, rows, loading, error, onRetry, empty, onRowClick }) {
   if (error) {
     return (
       <EmptyState
@@ -78,7 +78,11 @@ export default function DataTable({ columns, rows, loading, error, onRetry, empt
                 </TableRow>
               ))
             : rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
                   {columns.map((col) => (
                     <TableCell
                       key={col.key}
