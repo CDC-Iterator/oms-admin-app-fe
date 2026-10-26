@@ -1,10 +1,11 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
 import AppLoadingSkeleton from "./components/AppLoadingSkeleton.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import ProtectedLayout from "./layouts/ProtectedLayout.jsx";
 import PublicLayout from "./layouts/PublicLayout.jsx";
 import { AuthProvider } from "./providers/AuthProvider.jsx";
+import { canOpenPath } from "./lib/permissions.js";
 import { ToastProvider } from "./providers/ToastProvider.jsx";
 import ActivityLog from "./screens/ActivityLog.jsx";
 import ChannelProducts from "./screens/ChannelProducts.jsx";
@@ -26,6 +27,16 @@ import Login from "./screens/auth/Login.jsx";
 // /me/ -> silent refresh if needed, see AuthProvider) settles, instead of
 // flashing the login form or a protected screen that a moment later turns
 // out to be the wrong one for the session that was actually restored.
+function OpsRouteGuard() {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  return canOpenPath(user, pathname) ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/fulfillments" replace />
+  );
+}
+
 function AppRoutes() {
   const { isInitializing } = useAuth();
   if (isInitializing) return <AppLoadingSkeleton />;
@@ -36,20 +47,25 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
       </Route>
       <Route element={<ProtectedLayout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/orders" element={<OrdersList />} />
-        <Route path="/fulfillments" element={<FulfillmentLines />} />
-        <Route path="/orders/:id" element={<OrderDetail />} />
-        <Route path="/catalog/products" element={<ProductsList />} />
-        <Route path="/catalog/inventory" element={<InventoryList />} />
-        <Route path="/catalog/channel-products" element={<ChannelProducts />} />
-        <Route path="/catalog/unmapped" element={<UnmappedSkus />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/settings/locations" element={<LocationsList />} />
-        <Route path="/settings/channels" element={<ChannelsList />} />
-        <Route path="/settings/activity" element={<ActivityLog />} />
-        <Route path="/settings/profile" element={<Profile />} />
-        <Route path="/settings/users" element={<UserManagement />} />
+        <Route element={<OpsRouteGuard />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/orders" element={<OrdersList />} />
+          <Route path="/fulfillments" element={<FulfillmentLines />} />
+          <Route path="/orders/:id" element={<OrderDetail />} />
+          <Route path="/catalog/products" element={<ProductsList />} />
+          <Route path="/catalog/inventory" element={<InventoryList />} />
+          <Route
+            path="/catalog/channel-products"
+            element={<ChannelProducts />}
+          />
+          <Route path="/catalog/unmapped" element={<UnmappedSkus />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/settings/locations" element={<LocationsList />} />
+          <Route path="/settings/channels" element={<ChannelsList />} />
+          <Route path="/settings/activity" element={<ActivityLog />} />
+          <Route path="/settings/profile" element={<Profile />} />
+          <Route path="/settings/users" element={<UserManagement />} />
+        </Route>
       </Route>
     </Routes>
   );

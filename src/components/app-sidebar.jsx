@@ -31,6 +31,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth.js";
+import { isOperationsUser } from "@/lib/permissions.js";
 
 const NAV_ITEMS = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -42,11 +43,19 @@ const NAV_ITEMS = [
 const CATALOG_ITEMS = [
   { title: "Product Master", url: "/catalog/products", icon: Tags },
   { title: "Inventory", url: "/catalog/inventory", icon: Boxes },
-  { title: "Channel Products", url: "/catalog/channel-products", icon: ShoppingBag },
+  {
+    title: "Channel Products",
+    url: "/catalog/channel-products",
+    icon: ShoppingBag,
+  },
 ];
 
-const SETTINGS_ITEMS = [{ title: "Locations", url: "/settings/locations", icon: Warehouse }];
-const PROFILE_ITEMS = [{ title: "Profile", url: "/settings/profile", icon: UserCircle }];
+const SETTINGS_ITEMS = [
+  { title: "Locations", url: "/settings/locations", icon: Warehouse },
+];
+const PROFILE_ITEMS = [
+  { title: "Profile", url: "/settings/profile", icon: UserCircle },
+];
 
 // Shown to real superusers and business admins — the backend's own
 // IsSuperAdmin gate (/api/users/, /api/channels/connections/,
@@ -63,11 +72,16 @@ const SUPER_ADMIN_SETTINGS_ITEMS = [
 
 function NavItems({ items, pathname }) {
   return items.map((item) => {
-    const isActive = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
+    const isActive =
+      item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
     const Icon = item.icon;
     return (
       <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton isActive={isActive} render={<NavLink to={item.url} />} tooltip={item.title}>
+        <SidebarMenuButton
+          isActive={isActive}
+          render={<NavLink to={item.url} />}
+          tooltip={item.title}
+        >
           <Icon className="size-4" strokeWidth={2} />
           <span className="flex-1">{item.title}</span>
         </SidebarMenuButton>
@@ -79,6 +93,7 @@ function NavItems({ items, pathname }) {
 export function AppSidebar({ ...props }) {
   const location = useLocation();
   const { user, handleLogout } = useAuth();
+  const opsOnly = isOperationsUser(user);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -101,26 +116,33 @@ export function AppSidebar({ ...props }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Catalog</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <NavItems items={CATALOG_ITEMS} pathname={location.pathname} />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <NavItems items={SETTINGS_ITEMS} pathname={location.pathname} />
-              {(user?.is_superuser || user?.role === "admin") && (
-                <NavItems items={SUPER_ADMIN_SETTINGS_ITEMS} pathname={location.pathname} />
-              )}
-              <NavItems items={PROFILE_ITEMS} pathname={location.pathname} />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {!opsOnly && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Catalog</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <NavItems items={CATALOG_ITEMS} pathname={location.pathname} />
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        {!opsOnly && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Settings</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <NavItems items={SETTINGS_ITEMS} pathname={location.pathname} />
+                {(user?.is_superuser || user?.role === "admin") && (
+                  <NavItems
+                    items={SUPER_ADMIN_SETTINGS_ITEMS}
+                    pathname={location.pathname}
+                  />
+                )}
+                <NavItems items={PROFILE_ITEMS} pathname={location.pathname} />
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
