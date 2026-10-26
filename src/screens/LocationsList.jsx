@@ -14,10 +14,57 @@ const COLUMNS = [
   {
     key: "type",
     label: "Type",
-    render: (row) => <StatusBadge tone={row.type === "warehouse" ? "info" : "neutral"}>{row.type}</StatusBadge>,
+    render: (row) => (
+      <StatusBadge tone={row.type === "warehouse" ? "info" : "neutral"}>
+        {row.type}
+      </StatusBadge>
+    ),
   },
   { key: "city", label: "City" },
+  {
+    key: "is_active",
+    label: "Status",
+    render: (row) => (
+      <StatusBadge tone={row.is_active === false ? "danger" : "success"}>
+        {row.is_active === false ? "Inactive" : "Active"}
+      </StatusBadge>
+    ),
+  },
+  { key: "zone", label: "Zone", render: (row) => row.zone || "—" },
+  {
+    key: "pick_order",
+    label: "Pick order",
+    render: (row) =>
+      row.pick_order ? (
+        <StatusBadge tone="neutral">{row.pick_order}</StatusBadge>
+      ) : (
+        "—"
+      ),
+  },
 ];
+
+// Allocation picks warehouses before stores, and within each in zone-rank order; equal rank shares a number.
+function withPickOrder(allRows) {
+  const rows = allRows.filter((r) => r.is_active !== false);
+  const inactive = allRows
+    .filter((r) => r.is_active === false)
+    .map((r) => ({ ...r, pick_order: null }));
+  const tier = (r) => (r.type === "warehouse" ? 0 : 1);
+  const rank = (r) => r.zone_rank ?? Number.MAX_SAFE_INTEGER;
+  const sorted = [...rows].sort(
+    (a, b) =>
+      tier(a) - tier(b) || rank(a) - rank(b) || a.name.localeCompare(b.name),
+  );
+  let order = 0;
+  let prev = null;
+  const ranked = sorted.map((row) => {
+    const key = `${tier(row)}:${rank(row)}`;
+    if (key !== prev) order += 1;
+    prev = key;
+    return { ...row, pick_order: row.zone_rank == null ? null : order };
+  });
+  return [...ranked, ...inactive];
+}
 
 // Read-only — Location rows are POS-mirrored/seeded, not created here.
 export default function LocationsList() {
@@ -30,16 +77,25 @@ export default function LocationsList() {
   return (
     <div>
       <p className="mb-4 text-sm text-muted-foreground">
-        The stores and warehouses as POS 2.0 names them — mirrored, not managed here.
+        The stores and warehouses as POS 2.0 names them — mirrored, not managed
+        here. Pick order is how inventory allocation prefers them: warehouses
+        first, then stores, each in zone order (lower zone rank first). Inactive
+        locations are never allocated from.
       </p>
       <ListEyebrow count={data?.count ?? 0} noun="locations" live={false} />
       <DataTable
         columns={COLUMNS}
-        rows={data?.rows ?? []}
+        rows={withPickOrder(data?.rows ?? [])}
         loading={isFetching}
         error={formatApiError(error)}
         onRetry={refetch}
-        empty={<EmptyState icon={Warehouse} title="No locations yet" description="Locations mirrored from POS 2.0 will appear here." />}
+        empty={
+          <EmptyState
+            icon={Warehouse}
+            title="No locations yet"
+            description="Locations mirrored from POS 2.0 will appear here."
+          />
+        }
       />
       {canSeeChannelMapping && <LocationChannelMapper />}
     </div>
