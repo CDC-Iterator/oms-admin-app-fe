@@ -102,16 +102,40 @@ function groupBySku(rows) {
 
 const UNITS_PAGE_SIZE = 50;
 
+const UNIT_STATUS_LABELS = {
+  in_stock: "In stock",
+  in_transit: "In transit",
+  reserved: "Reserved",
+  sold: "Sold",
+  returned: "Returned",
+  damaged: "Damaged",
+};
+
+// POS never changes a unit's status when it runs out; qty 0 is the real signal.
+function unitStatus(unit) {
+  if (unit.qty === 0 && unit.status === "in_stock") return { label: "Empty", tone: "neutral" };
+  return { label: UNIT_STATUS_LABELS[unit.status] ?? unit.status, tone: unitStatusTone(unit.status) };
+}
+
 function UnitsDrawer({ target, onOpenChange }) {
   const [page, setPage] = useState(1);
-  // A different SKU/location starts again from the first page.
-  useEffect(() => setPage(1), [target?.skuId, target?.locationId]);
+  const [hideEmpty, setHideEmpty] = useState(true);
+  // A different SKU/location (or filter) starts again from the first page.
+  useEffect(() => setPage(1), [target?.skuId, target?.locationId, hideEmpty]);
+  const scope = target ? { sku_id: target.skuId, location_id: target.locationId ?? undefined } : undefined;
   const { data, isFetching, error } = useGetInventoryUnitsQuery(
-    target ? { sku_id: target.skuId, location_id: target.locationId ?? undefined, page } : undefined,
+    scope ? { ...scope, page, min_qty: hideEmpty ? 1 : undefined } : undefined,
     { skip: !target }
   );
+  // Two cheap first-page reads give the header its "with stock / empty" split.
+  const { data: allUnits } = useGetInventoryUnitsQuery(scope ? { ...scope, page: 1 } : undefined, { skip: !target });
+  const { data: stocked } = useGetInventoryUnitsQuery(scope ? { ...scope, page: 1, min_qty: 1 } : undefined, {
+    skip: !target,
+  });
   const rows = data?.rows ?? [];
   const count = data?.count ?? 0;
+  const showLocation = target && !target.locationId;
+  const title = target?.itemCode && target.itemCode !== "#N/A" ? target.itemCode : target?.productTitle;
 
   return (
     <Sheet open={Boolean(target)} onOpenChange={onOpenChange}>
@@ -121,10 +145,12 @@ function UnitsDrawer({ target, onOpenChange }) {
         <SheetHeader>
           {/* item_code can be null (keyless variant) — fall back to the
               product title so the header is never blank. */}
-          <SheetTitle>Units — {target?.itemCode ?? target?.productTitle}</SheetTitle>
+          <SheetTitle>Units — {title}</SheetTitle>
           <SheetDescription>
             {target?.locationLabel ? `At ${target.locationLabel}` : "Across every location"}
-            {data ? ` · ${count} unit${count === 1 ? "" : "s"}` : ""}
+            {allUnits && stocked
+              ? ` · ${stocked.count} with stock · ${allUnits.count - stocked.count} empty`
+              : ""}
           </SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-2 px-4">
@@ -133,9 +159,20 @@ function UnitsDrawer({ target, onOpenChange }) {
               <AlertDescription>{formatApiError(error)}</AlertDescription>
             </Alert>
           )}
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              className="oms-checkbox"
+              checked={hideEmpty}
+              onChange={(e) => setHideEmpty(e.target.checked)}
+            />
+            Hide empty units (qty 0)
+          </label>
           {isFetching && !data && <Skeleton className="h-24 w-full" />}
           {!isFetching && !error && rows.length === 0 && (
-            <p className="text-sm text-muted-foreground">No units found.</p>
+            <p className="text-sm text-muted-foreground">
+              {hideEmpty ? "No units with stock. Untick “Hide empty units” to see empty ones." : "No units found."}
+            </p>
           )}
           {rows.length > 0 && (
             <div
@@ -145,25 +182,30 @@ function UnitsDrawer({ target, onOpenChange }) {
               <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[34%] shadow-[inset_0_-1px_0_0_var(--border)]">Barcode</TableHead>
-                    <TableHead className="w-[26%] shadow-[inset_0_-1px_0_0_var(--border)]">Ownership</TableHead>
-                    <TableHead className="w-[28%] shadow-[inset_0_-1px_0_0_var(--border)]">Status</TableHead>
+                    <TableHead className={`${showLocation ? "w-[26%]" : "w-[34%]"} shadow-[inset_0_-1px_0_0_var(--border)]`}>Barcode</TableHead>
+                    {showLocation && <TableHead className="w-[22%] shadow-[inset_0_-1px_0_0_var(--border)]">Location</TableHead>}
+                    <TableHead className={`${showLocation ? "w-[20%]" : "w-[26%]"} shadow-[inset_0_-1px_0_0_var(--border)]`}>Ownership</TableHead>
+                    <TableHead className={`${showLocation ? "w-[20%]" : "w-[28%]"} shadow-[inset_0_-1px_0_0_var(--border)]`}>Status</TableHead>
                     <TableHead className="w-[12%] text-center shadow-[inset_0_-1px_0_0_var(--border)]">Qty</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
-                  {rows.map((unit) => (
+                  {rows.map((unit) => {
+                    const status = unitStatus(unit);
+                    return (
                     <TableRow key={unit.id}>
                       <TableCell className="truncate font-mono">{unit.barcode}</TableCell>
+                      {showLocation && <TableCell className="truncate">{unit.location}</TableCell>}
                       <TableCell className="truncate capitalize">{unit.ownership_type}</TableCell>
                       <TableCell>
-                        <StatusBadge tone={unitStatusTone(unit.status)} className="status-chip--compact">
-                          {unit.status}
+                        <StatusBadge tone={status.tone} className="status-chip--compact">
+                          {status.label}
                         </StatusBadge>
                       </TableCell>
                       <TableCell className="text-center font-mono tabular-nums">{unit.qty}</TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
