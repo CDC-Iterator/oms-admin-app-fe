@@ -114,6 +114,7 @@ export function OrderLinesSection({
   lineGroups,
   shipmentById,
   isAdmin,
+  canShip,
   shippableLineIds,
   selectedLineIds,
   onToggleLine,
@@ -187,7 +188,7 @@ export function OrderLinesSection({
               reference={channel ? channel.label : ref ? `${orderName}-F${shipmentNumber}` : null}
             >
               {channel && <span className="text-xs text-muted-foreground">Fulfilled in Shopify</span>}
-              {isOpen && isAdmin && group.entries.some((e) => shippableLineIds.has(e.line.id)) && (
+              {isOpen && canShip && group.entries.some((e) => shippableLineIds.has(e.line.id)) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -199,7 +200,7 @@ export function OrderLinesSection({
                   Book Shipment
                 </Button>
               )}
-              {isManual && isAdmin && shipment && (
+              {isManual && canShip && shipment && (
                 <Button variant="ghost" size="icon-sm" onClick={() => onEditShipment(shipment)} aria-label="Edit shipment">
                   <Pencil className="size-3.5" />
                 </Button>
@@ -247,8 +248,8 @@ export function OrderLinesSection({
                     group={group}
                     orderId={orderId}
                     isAdmin={isAdmin}
-                    checkboxColumn={isOpen && isAdmin && order.channel === "shopify" && group.entries.some((e) => !e.line.is_dropship)}
-                    showCheckbox={isOpen && isAdmin && order.channel === "shopify" && !entry.line.is_dropship}
+                    checkboxColumn={isOpen && canShip && order.channel === "shopify" && group.entries.some((e) => !e.line.is_dropship)}
+                    showCheckbox={isOpen && canShip && order.channel === "shopify" && !entry.line.is_dropship}
                     disabledReason={
                       shippableLineIds.has(entry.line.id)
                         ? null

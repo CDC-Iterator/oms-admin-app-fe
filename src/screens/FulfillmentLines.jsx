@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useGetInventoryLocationSummaryQuery } from "../api/services/inventory.js";
 import { useBookFulfillmentLinesMutation, useGetFulfillmentLinesQuery } from "../api/services/orders.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { canBookShipments } from "../lib/permissions.js";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
@@ -120,7 +121,7 @@ export default function FulfillmentLines() {
     });
 
   const { user } = useAuth();
-  const isAdmin = user?.is_superuser || user?.role === "admin";
+  const canBook = canBookShipments(user);
   const [bookOpen, setBookOpen] = useState(false);
   const [courier, setCourier] = useState("shipway");
   const [bookResult, setBookResult] = useState(null);
@@ -208,7 +209,7 @@ export default function FulfillmentLines() {
                   <TableHead colSpan={10} className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium">{selected.size} selected</span>
-                      {isAdmin && (
+                      {canBook && (
                         <Button size="sm" variant="outline" onClick={() => setBookOpen(true)}>
                           <Truck className="size-3.5" />
                           Book shipments

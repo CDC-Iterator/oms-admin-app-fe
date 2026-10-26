@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.jsx";
 import { useCreateUserMutation, useGetUsersQuery, useUpdateUserMutation } from "../api/services/users.js";
+import { useGetLocationsQuery } from "../api/services/locations.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
 import { formatApiError } from "../lib/errors.js";
@@ -31,7 +32,7 @@ const PAGE_SIZE = 50;
 // User.Role choices — apps.accounts.models.
 const ROLES = [
   { value: "admin", label: "Admin" },
-  { value: "fulfilment", label: "Fulfilment" },
+  { value: "operations", label: "Operations" },
   { value: "reporting", label: "Reporting" },
 ];
 
@@ -44,6 +45,7 @@ const EMPTY_FORM = {
   role: "reporting",
   is_active: true,
   is_superuser: false,
+  locations: [],
 };
 
 function useDebounced(value, delayMs) {
@@ -57,6 +59,10 @@ function useDebounced(value, delayMs) {
 
 function UserForm({ open, onOpenChange, mode, form, setForm, onSubmit, error, isSaving }) {
   const set = (key) => (event) => setForm((f) => ({ ...f, [key]: event.target.value }));
+  const { data: locationsData } = useGetLocationsQuery();
+  const allLocations = locationsData?.rows ?? locationsData?.results ?? locationsData ?? [];
+  const toggleLocation = (id) =>
+    setForm((f) => ({ ...f, locations: f.locations.includes(id) ? f.locations.filter((l) => l !== id) : [...f.locations, id] }));
   const setChecked = (key) => (event) => setForm((f) => ({ ...f, [key]: event.target.checked }));
 
   return (
@@ -108,6 +114,25 @@ function UserForm({ open, onOpenChange, mode, form, setForm, onSubmit, error, is
               ))}
             </Select>
           </div>
+          {form.role === "operations" && (
+            <div className="space-y-1.5">
+              <Label>Locations</Label>
+              <p className="text-xs text-muted-foreground">Operations users only see and ship orders from these locations.</p>
+              <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border p-2">
+                {Array.isArray(allLocations) && allLocations.map((loc) => (
+                  <label key={loc.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="oms-checkbox"
+                      checked={form.locations.includes(loc.id)}
+                      onChange={() => toggleLocation(loc.id)}
+                    />
+                    {loc.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" className="oms-checkbox" checked={form.is_active} onChange={setChecked("is_active")} />
             Active
@@ -162,6 +187,9 @@ export default function UserManagement() {
   const searchParam = debouncedSearch || undefined;
   const { data, isFetching, error, refetch } = useGetUsersQuery({ page, search: searchParam });
   const rows = data?.rows ?? [];
+
+  const { data: locationsData } = useGetLocationsQuery();
+  const locationNames = Object.fromEntries((locationsData?.rows ?? []).map((l) => [l.id, l.name]));
 
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
@@ -263,6 +291,7 @@ export default function UserManagement() {
                 <TableHead className="border-b-2 border-border">Email</TableHead>
                 <TableHead className="border-b-2 border-border">Name</TableHead>
                 <TableHead className="border-b-2 border-border text-center">Role</TableHead>
+                <TableHead className="border-b-2 border-border">Locations</TableHead>
                 <TableHead className="border-b-2 border-border text-center">Super admin</TableHead>
                 <TableHead className="border-b-2 border-border text-center">Status</TableHead>
                 <TableHead className="border-b-2 border-border text-right">Actions</TableHead>
@@ -280,6 +309,11 @@ export default function UserManagement() {
                     <TableCell className="text-sm">{`${row.first_name} ${row.last_name}`.trim() || "—"}</TableCell>
                     <TableCell className="text-center">
                       <StatusBadge tone="neutral">{row.role}</StatusBadge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {row.role === "operations"
+                        ? row.locations.map((id) => locationNames[id] ?? id).join(", ") || "None assigned"
+                        : "All"}
                     </TableCell>
                     <TableCell className="text-center">
                       {row.is_superuser ? <StatusBadge tone="info">Super admin</StatusBadge> : "—"}

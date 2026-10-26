@@ -28,6 +28,7 @@ import { StatusBadge } from "@/components/status-badge.jsx";
 import { LineActionDialog } from "@/components/LineActionDialog.jsx";
 import { LineActionsCard } from "@/components/LineActionsCard.jsx";
 import { useAuth } from "../hooks/useAuth.js";
+import { canBookShipments, isAdminUser } from "../lib/permissions.js";
 import { useToast } from "../hooks/useToast.js";
 import {
   useGetOrderQuery,
@@ -510,7 +511,8 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const isAdmin = user?.is_superuser || user?.role === "admin";
+  const isAdmin = isAdminUser(user);
+  const canShip = canBookShipments(user);
   const { data: order, isFetching, error, refetch } = useGetOrderQuery(id);
   const [postEvent, { isLoading: isPosting }] = usePostOrderEventMutation();
   const [confirmMode, setConfirmMode] = useState(null);
@@ -661,6 +663,7 @@ export default function OrderDetail() {
               lineGroups={lineGroups}
               shipmentById={shipmentById}
               isAdmin={isAdmin}
+              canShip={canShip}
               shippableLineIds={shippableLineIds}
               selectedLineIds={selectedLineIds}
               onToggleLine={toggleLineSelection}
@@ -702,7 +705,7 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {isAdmin && order && (
+      {canShip && order && (
         <ShipmentDialog
           orderId={order.id}
           shipment={dialogTarget && dialogTarget.id ? dialogTarget : null}
