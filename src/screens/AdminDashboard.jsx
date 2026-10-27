@@ -10,6 +10,9 @@ import { useGetAdminDashboardQuery } from "../api/services/reports.js";
 import { formatApiError } from "../lib/errors.js";
 
 const rupees = (value) => `₹${Number(value).toLocaleString("en-IN")}`;
+// Axis labels in lakh / crore: ₹1.9Cr, ₹97L, ₹40k.
+const compactRupees = (v) =>
+  v >= 1e7 ? `₹${+(v / 1e7).toFixed(1)}Cr` : v >= 1e5 ? `₹${+(v / 1e5).toFixed(1)}L` : v >= 1e3 ? `₹${Math.round(v / 1e3)}k` : `₹${v}`;
 const HEALTH_DOT = { ok: "bg-emerald-500", stale: "bg-amber-500", failing: "bg-destructive" };
 const HEALTH_TEXT = { ok: "Healthy", stale: "No recent success", failing: "Failing" };
 
@@ -62,7 +65,7 @@ export default function AdminDashboard() {
                 <Delta value={data.sales_over_time.delta} />
                 <span className="text-xs text-muted-foreground">this week vs last week</span>
               </div>
-              <WeekChart data={data.sales_over_time} format={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v)} />
+              <WeekChart data={data.sales_over_time} format={compactRupees} className="-mx-4 w-auto" />
               <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-primary" /> This week</span>
                 <span className="flex items-center gap-1.5"><span className="w-4 border-t border-dashed border-primary/50" /> Last week</span>

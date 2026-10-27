@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -54,33 +55,47 @@ export function MetricCard({ card }) {
   return card.link ? <Link to={card.link}>{body}</Link> : body;
 }
 
-// This week (solid) against last week (dotted), like the analytics line chart.
-export function WeekChart({ data, format = (v) => v }) {
-  const w = 640;
-  const h = 220;
-  const pad = { l: 34, r: 10, t: 10, b: 24 };
+// This week (solid) against last week (dotted). Measures its container so it fills the full width, and its
+// grid lines run edge to edge (the parent pulls the chart out to the card's borders with a negative margin).
+export function WeekChart({ data, format = (v) => v, className }) {
+  const ref = useRef(null);
+  const [width, setWidth] = useState(640);
+  useLayoutEffect(() => {
+    if (!ref.current) return undefined;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(Math.round(entry.contentRect.width), 240)));
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const h = 230;
+  const inset = 28; // keeps the first/last point and day label off the edges
+  const pad = { t: 14, b: 26 };
   const max = Math.max(...data.this_week, ...data.last_week, 1);
-  const x = (i) => pad.l + (i / (data.labels.length - 1)) * (w - pad.l - pad.r);
+  const x = (i) => inset + (i / (data.labels.length - 1)) * (width - inset * 2);
   const y = (v) => h - pad.b - (v / max) * (h - pad.t - pad.b);
   const path = (series) => series.map((v, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
   const ticks = [0, 0.5, 1].map((f) => Math.round(max * f));
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-56 w-full" role="img" aria-label="Shipments per day, this week against last week">
-      {ticks.map((t) => (
-        <g key={t}>
-          <line x1={pad.l} x2={w - pad.r} y1={y(t)} y2={y(t)} className="stroke-border" strokeWidth="1" />
-          <text x={pad.l - 6} y={y(t) + 3} textAnchor="end" className="fill-muted-foreground text-[10px]">{format(t)}</text>
-        </g>
-      ))}
-      {data.labels.map((l, i) => (
-        <text key={i} x={x(i)} y={h - 6} textAnchor="middle" className="fill-muted-foreground text-[10px]">{l}</text>
-      ))}
-      <path d={path(data.last_week)} fill="none" className="stroke-primary/40" strokeWidth="1.5" strokeDasharray="3 4" />
-      <path d={path(data.this_week)} fill="none" className="stroke-primary" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      {data.this_week.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r="2.5" className="fill-primary" />
-      ))}
-    </svg>
+    <div ref={ref} className={cn("w-full", className)}>
+      <svg width={width} height={h} viewBox={`0 0 ${width} ${h}`} className="block" role="img" aria-label="This week against last week">
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={0} x2={width} y1={y(t)} y2={y(t)} className="stroke-border" strokeWidth="1" />
+            {t > 0 && (
+              <text x={inset - 16} y={y(t) - 5} className="fill-muted-foreground text-[10px]">{format(t)}</text>
+            )}
+          </g>
+        ))}
+        {data.labels.map((l, i) => (
+          <text key={i} x={x(i)} y={h - 8} textAnchor="middle" className="fill-muted-foreground text-[10px]">{l}</text>
+        ))}
+        <path d={path(data.last_week)} fill="none" className="stroke-primary/40" strokeWidth="1.5" strokeDasharray="3 4" />
+        <path d={path(data.this_week)} fill="none" className="stroke-primary" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {data.this_week.map((v, i) => (
+          <circle key={i} cx={x(i)} cy={y(v)} r="2.5" className="fill-primary" />
+        ))}
+      </svg>
+    </div>
   );
 }
 

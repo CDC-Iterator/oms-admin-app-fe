@@ -52,7 +52,7 @@ export default function OperationsDashboard() {
                 <Delta value={data.shipped_over_time.delta} />
                 <span className="text-xs text-muted-foreground">this week vs last week</span>
               </div>
-              <WeekChart data={data.shipped_over_time} />
+              <WeekChart data={data.shipped_over_time} className="-mx-4 w-auto" />
               <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-primary" /> This week</span>
                 <span className="flex items-center gap-1.5"><span className="w-4 border-t border-dashed border-primary/50" /> Last week</span>
