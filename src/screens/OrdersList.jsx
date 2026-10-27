@@ -29,10 +29,6 @@ import { fulfillmentTone, orderTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } f
 const PAGE_SIZE = 50;
 const VIEW_FILTERS = ["dropship", "pos_eligible", "unit_status", "created", "waiting_hours", "profile"];
 
-// Row total for a saved view's tab: a one-row page, only its `count` is read.
-const useViewCount = (params) =>
-  useGetOrdersQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
-
 // Order.channel choices — apps.channels.models.
 const CHANNELS = [
   { value: "shopify", label: "Shopify" },
@@ -64,6 +60,7 @@ const COLUMNS = [
   { id: "placed_at", header: "Date", size: 10.5, meta: { filterDateRange: true, filterParam: "placed" } },
   { id: "channel", header: "Channel", size: 6.5, meta: { filterOptions: CHANNELS, filterParam: "channel", filterMulti: true } },
   { id: "customer", header: "Customer", size: 10, enableSorting: false },
+  { id: "items", header: "Items", size: 8, enableSorting: false },
   { id: "total", header: "Total", size: 6, align: "right" },
   { id: "status", header: "Status", size: 8, enableSorting: false, meta: { filterOptions: ORDER_STATUSES, filterParam: "status", filterMulti: true } },
   { id: "payment", header: "Payment", size: 10, enableSorting: false, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status", filterMulti: true } },
@@ -94,6 +91,8 @@ function LineItemsRow({ orderId }) {
   return (
     <TableRow className="hover:bg-transparent">
       <TableCell colSpan={COLUMN_COUNT} className="bg-muted/20 py-2">
+        {/* w-0 min-w-full: fill the row without feeding the content-sized outer table's column widths. */}
+        <div className="w-0 min-w-full">
         {error ? (
           <p className="text-xs text-destructive">{formatApiError(error)}</p>
         ) : isFetching ? (
@@ -143,6 +142,7 @@ function LineItemsRow({ orderId }) {
             </Table>
           </div>
         )}
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -206,6 +206,12 @@ export default function OrdersList() {
     defaultOrdering: DEFAULT_ORDERING,
   });
   const savedView = useSavedViewParams({ search, setSearch });
+  // A tab's count is its filters plus the live search, and picking a tab keeps that search.
+  const useViewCount = (viewParams) =>
+    useGetOrdersQuery(
+      { ...viewParams, search: debouncedSearch || viewParams.search, page: 1, page_size: 1 },
+      { selectFromResult: ({ data }) => ({ count: data?.count }) }
+    ).count;
 
   const searchParam = debouncedSearch || undefined;
   // Filters only saved views set (no column header): ShipTurtle, POS-processable, suggested units.
@@ -245,7 +251,7 @@ export default function OrdersList() {
           )}
         </div>
         <ViewFilterChips table={table} keys={VIEW_ONLY_FILTERS} />
-        <SavedViews resource="orders" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
+        <SavedViews resource="orders" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
         {activeFilters > 0 && (
           <Button
             size="sm"
@@ -313,6 +319,8 @@ export default function OrdersList() {
               {rows.map((row) => {
                 const isExpanded = expandedIds.has(row.id);
                 const destination = [row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ");
+                const itemsLabel = row.item_qty == null ? "—" : String(row.item_qty);
+                const itemsTitle = row.line_count == null ? undefined : `${row.line_count} ${row.line_count === 1 ? "line" : "lines"}, ${row.item_qty} qty`;
                 // An order can carry several POS invoices (comma-separated): show the first, hint at the rest.
                 const invoices = (row.invoice_id || "").split(",").map((i) => i.trim()).filter(Boolean);
                 const invoiceLabel = invoices.length === 0 ? "—" : invoices.length > 1 ? `${invoices[0]} …` : invoices[0];
@@ -343,6 +351,7 @@ export default function OrdersList() {
                         <ChannelBadge channel={row.channel} className="status-chip--compact" />
                       </TableCell>
                       <TableCell className={"truncate py-1 text-xs" + strike} title={row.customer_name || undefined}>{row.customer_name || "—"}</TableCell>
+                      <TableCell className={"py-1 font-mono text-xs tabular-nums" + strike} title={itemsTitle}>{itemsLabel}</TableCell>
                       <TableCell className={"py-1 text-right font-mono text-xs tabular-nums" + strike}>
                         {Number(row.total_amount ?? 0).toLocaleString("en-IN")}
                       </TableCell>
