@@ -157,6 +157,11 @@ export default function FulfillmentLines() {
 
   const { user } = useAuth();
   const canBook = canBookShipments(user);
+  // The checkbox column exists only on the Ready to ship view, and only for someone who can book.
+  const bulkEnabled = canBook && (stage || READY) === READY;
+  useEffect(() => {
+    if (!bulkEnabled) setSelected(new Map());
+  }, [bulkEnabled]);
   const [bookOpen, setBookOpen] = useState(false);
   const [courier, setCourier] = useState("shipway");
   const [bookResult, setBookResult] = useState(null);
@@ -227,12 +232,12 @@ export default function FulfillmentLines() {
         >
           <Table className="min-w-[1200px] table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             <colgroup>
-              {COLUMN_WIDTHS.map((w, i) => (
+              {(bulkEnabled ? COLUMN_WIDTHS : [COLUMN_WIDTHS[0] + COLUMN_WIDTHS[1], ...COLUMN_WIDTHS.slice(2)]).map((w, i) => (
                 <col key={i} style={{ width: `${w}%` }} />
               ))}
             </colgroup>
             <TableHeader>
-              {selected.size > 0 && (
+              {bulkEnabled && selected.size > 0 && (
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
                     <input
@@ -259,16 +264,18 @@ export default function FulfillmentLines() {
                   </TableHead>
                 </TableRow>
               )}
-              <TableRow className={selected.size > 0 ? "hidden" : "hover:bg-transparent"}>
-                <TableHead className="w-[3%] shadow-[inset_0_-1px_0_0_var(--border)]">
-                  <input
-                    type="checkbox"
-                    className="oms-checkbox mx-auto"
-                    checked={pageSelected}
-                    onChange={togglePage}
-                    aria-label="Select all lines on this page"
-                  />
-                </TableHead>
+              <TableRow className={bulkEnabled && selected.size > 0 ? "hidden" : "hover:bg-transparent"}>
+                {bulkEnabled && (
+                  <TableHead className="w-[3%] shadow-[inset_0_-1px_0_0_var(--border)]">
+                    <input
+                      type="checkbox"
+                      className="oms-checkbox mx-auto"
+                      checked={pageSelected}
+                      onChange={togglePage}
+                      aria-label="Select all lines on this page"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="w-[22%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item" />
                 </TableHead>
@@ -293,20 +300,22 @@ export default function FulfillmentLines() {
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
-              {rows.length === 0 && <TableEmptyRow colSpan={12} />}
+              {rows.length === 0 && <TableEmptyRow colSpan={bulkEnabled ? 12 : 11} />}
               {rows.map((row) => (
                 <TableRow key={row.row_id ?? row.line_id} data-state={selected.has(row.line_id) ? "selected" : undefined}>
-                  <TableCell>
-                    {row.stage === READY && (
-                      <input
-                        type="checkbox"
-                        className="oms-checkbox mx-auto"
-                        checked={selected.has(row.line_id)}
-                        onChange={() => toggle(row)}
-                        aria-label={`Select ${row.order_name} ${row.external_sku}`}
-                      />
-                    )}
-                  </TableCell>
+                  {bulkEnabled && (
+                    <TableCell>
+                      {row.stage === READY && (
+                        <input
+                          type="checkbox"
+                          className="oms-checkbox mx-auto"
+                          checked={selected.has(row.line_id)}
+                          onChange={() => toggle(row)}
+                          aria-label={`Select ${row.order_name} ${row.external_sku}`}
+                        />
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <LineProduct line={row} layout="card" dense />
                   </TableCell>
