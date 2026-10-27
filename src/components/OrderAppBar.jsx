@@ -14,7 +14,8 @@ import { useToast } from "../hooks/useToast.js";
 
 /** Shopify-style order top bar: round back button, "Orders / #name" breadcrumb, a "More actions" menu and
  *  previous/next order arrows (shown only when the page was opened from the list, which knows the neighbours). */
-export function OrderAppBar({ order, onBack, onPrev, onNext, actions = [] }) {
+// `backTo`/`backState`/`backLabel` return to the list screen the order was opened from, filters and all.
+export function OrderAppBar({ order, onBack, onPrev, onNext, actions = [], backTo = "/orders", backState, backLabel = "Orders" }) {
   const { showToast } = useToast();
   const name = order.order_name || order.external_order_id;
 
@@ -29,16 +30,16 @@ export function OrderAppBar({ order, onBack, onPrev, onNext, actions = [] }) {
 
   return (
     <div className="mb-4 flex items-center gap-3">
-      <Button variant="outline" size="icon" className="rounded-full" onClick={onBack} aria-label="Back to orders">
+      <Button variant="outline" size="icon" className="rounded-full" onClick={onBack} aria-label={`Back to ${backLabel.toLowerCase()}`}>
         <ChevronLeft className="size-4" />
       </Button>
 
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <Link to="/orders" className="inline-flex items-center gap-1.5 hover:text-foreground">
+            <Link to={backTo} state={backState} className="inline-flex items-center gap-1.5 hover:text-foreground">
               <Inbox className="size-4" />
-              Orders
+              {backLabel}
             </Link>
           </BreadcrumbItem>
           <BreadcrumbSeparator />

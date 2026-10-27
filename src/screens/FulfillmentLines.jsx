@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PackageCheck, Truck } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
@@ -59,7 +59,8 @@ function useDebounced(value, delayMs) {
 
 // Every order line that still has to go out and already has a unit confirmed — a flat pick list, not one row per order.
 export default function FulfillmentLines() {
-  const [search, setSearch] = useState("");
+  const location = useLocation();
+  const [search, setSearch] = useState(location.state?.search ?? "");
   const debouncedSearch = useDebounced(search, 300);
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
@@ -277,7 +278,7 @@ export default function FulfillmentLines() {
                     <LineProduct line={row} layout="card" dense />
                   </TableCell>
                   <TableCell className="font-mono">
-                    <Link to={`/orders/${row.order_id}`} className="text-primary hover:underline" title={row.customer_name}>
+                    <Link to={`/orders/${row.order_id}`} state={{ from: location.pathname + location.search, search }} className="text-primary hover:underline" title={row.customer_name}>
                       {row.order_name}
                     </Link>
                   </TableCell>

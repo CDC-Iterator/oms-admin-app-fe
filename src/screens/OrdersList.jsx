@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
@@ -148,7 +148,9 @@ function LineItemsRow({ orderId }) {
 }
 
 export default function OrdersList() {
-  const [search, setSearch] = useState("");
+  const location = useLocation();
+  // Coming back from an order restores the search text too (the filters themselves live in the URL).
+  const [search, setSearch] = useState(location.state?.search ?? "");
   const debouncedSearch = useDebounced(search, 300);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
 
@@ -326,7 +328,7 @@ export default function OrdersList() {
                       <TableCell className="py-1 font-mono text-xs">
                         <Link
                           to={`/orders/${row.id}`}
-                          state={{ orderIds: rows.map((r) => r.id) }}
+                          state={{ orderIds: rows.map((r) => r.id), from: location.pathname + location.search, search }}
                           className={row.status === "cancelled" ? "hover:underline" + strike : "text-primary hover:underline"}
                           title={row.external_order_id}
                         >
