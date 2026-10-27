@@ -120,3 +120,34 @@ export function syncTone(status) {
       return "neutral";
   }
 }
+
+// InventoryUnit.Status choices — apps.inventory.models.
+export function unitStatusTone(status) {
+  switch (status) {
+    case "in_stock":
+      return "success";
+    case "reserved":
+      return "pending";
+    case "sold":
+      return "info";
+    case "damaged":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+const UNIT_STATUS_LABELS = {
+  in_stock: "In stock",
+  in_transit: "In transit",
+  reserved: "Reserved",
+  sold: "Sold",
+  returned: "Returned",
+  damaged: "Damaged",
+};
+
+// POS never changes a unit's status when it runs out; qty 0 is the real signal.
+export function unitStatus(unit) {
+  if (unit.qty === 0 && unit.status === "in_stock") return { label: "Out of stock", tone: "neutral" };
+  return { label: UNIT_STATUS_LABELS[unit.status] ?? unit.status, tone: unitStatusTone(unit.status) };
+}

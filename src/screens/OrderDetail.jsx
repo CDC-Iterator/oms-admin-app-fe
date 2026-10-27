@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { ArrowLeft, Ban, RefreshCw, Undo2 } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -119,7 +119,7 @@ const EMPTY_SHIPMENT_FORM = {
   awb: "",
   carrierName: "",
   trackingUrl: "",
-  weightKg: "",
+  weightG: "",
   lengthCm: "",
   breadthCm: "",
   heightCm: "",
@@ -242,6 +242,24 @@ function suggestPackagingDims(shippableLines) {
   };
 }
 
+// A booking value we already have shows read-only; a missing one is an input.
+function BookingField({ label, unit, name, known, form, set, className = "", ...inputProps }) {
+  return (
+    <div className={className}>
+      <p className="mb-1 text-xs font-medium text-muted-foreground">
+        {label} ({unit})
+      </p>
+      {known ? (
+        <p className="rounded-lg bg-muted/50 px-2.5 py-1.5 font-mono text-sm tabular-nums">
+          {form[name]} {unit}
+        </p>
+      ) : (
+        <Input type="number" step="0.01" min="0.01" placeholder={`${label} (${unit})`} value={form[name]} onChange={set(name)} {...inputProps} />
+      )}
+    </div>
+  );
+}
+
 // Create/edit modal for a single shipment. `shipment` present → edit
 // (courier/line items fixed, only carrier details + status change);
 // `shipment` absent → create (manual courier only). `shippableLines` in
@@ -263,6 +281,8 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
   const { showToast } = useToast();
 
   const [form, setForm] = useState(EMPTY_SHIPMENT_FORM);
+  const [known, setKnown] = useState({});
+  const [weightIncomplete, setWeightIncomplete] = useState(false);
   const [formError, setFormError] = useState(null);
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -272,20 +292,28 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
 
   // Re-seed the form from `shipment` (or blank, for create) each time the
   // dialog opens — a plain useState initializer only runs once per mount.
-  // weightKg/dims are pre-filled suggestions (Shopify's per-line
-  // weight_grams; each line's own Packaging for L/B/H) — still plain
-  // editable fields, not read-only, since the packed box can legitimately
-  // differ from either source.
+  // Weight (Shopify's per-line grams) and L/B/H (each line's Packaging) show read-only when we have
+  // them; only a missing value becomes an input.
   useEffect(() => {
     if (!open) return;
-    const suggestedGrams = shippableLines.reduce((sum, li) => sum + (li.weight_grams ?? 0) * li.remaining, 0);
+    const suggestedGrams = Math.round(shippableLines.reduce((sum, li) => sum + (li.weight_grams ?? 0) * li.remaining, 0));
     const suggestedDims = suggestPackagingDims(shippableLines);
+    const known = (value) => Number(value) > 0;
+    // One weightless line makes the total incomplete, so the weight stays editable (prefilled with what we know).
+    const weightComplete = known(suggestedGrams) && shippableLines.every((li) => known(li.weight_grams));
+    setWeightIncomplete(known(suggestedGrams) && !weightComplete);
+    setKnown({
+      weightG: weightComplete,
+      lengthCm: known(suggestedDims?.length_cm),
+      breadthCm: known(suggestedDims?.breadth_cm),
+      heightCm: known(suggestedDims?.height_cm),
+    });
     setForm({
       ...EMPTY_SHIPMENT_FORM,
-      weightKg: suggestedGrams > 0 ? String(Math.round((suggestedGrams / 1000) * 100) / 100) : "",
-      lengthCm: suggestedDims ? String(suggestedDims.length_cm) : "",
-      breadthCm: suggestedDims ? String(suggestedDims.breadth_cm) : "",
-      heightCm: suggestedDims ? String(suggestedDims.height_cm) : "",
+      weightG: known(suggestedGrams) ? String(suggestedGrams) : "",
+      lengthCm: known(suggestedDims?.length_cm) ? String(suggestedDims.length_cm) : "",
+      breadthCm: known(suggestedDims?.breadth_cm) ? String(suggestedDims.breadth_cm) : "",
+      heightCm: known(suggestedDims?.height_cm) ? String(suggestedDims.height_cm) : "",
       awb: shipment?.awb_number ?? "",
       carrierName: shipment?.carrier_name ?? "",
       trackingUrl: shipment?.tracking_url ?? "",
@@ -340,7 +368,7 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
           orderId,
           courier: form.courier,
           line_items: shippableLines.map((li) => ({ line_item: li.id, qty: li.remaining })),
-          weight_kg: Number(form.weightKg),
+          weight_kg: Number(form.weightG) / 1000,
           length_cm: form.lengthCm ? Number(form.lengthCm) : undefined,
           breadth_cm: form.breadthCm ? Number(form.breadthCm) : undefined,
           height_cm: form.heightCm ? Number(form.heightCm) : undefined,
@@ -358,7 +386,7 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="grid-cols-[minmax(0,1fr)] sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit shipment" : "Book shipment"}</DialogTitle>
         </DialogHeader>
@@ -436,46 +464,30 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
           )}
 
           {isIntegratedCourier && (
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="Weight (kg)"
-                className="col-span-2"
-                value={form.weightKg}
-                onChange={set("weightKg")}
-              />
-              {(form.weightKg || form.lengthCm) && (
-                <p className="col-span-2 -mt-1 text-xs text-muted-foreground">
-                  Weight suggested from the order's own item weights, box size from each item's packaging —
-                  adjust for the actual packed box.
-                </p>
-              )}
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="Length (cm, optional)"
-                value={form.lengthCm}
-                onChange={set("lengthCm")}
-              />
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="Breadth (cm, optional)"
-                value={form.breadthCm}
-                onChange={set("breadthCm")}
-              />
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="Height (cm, optional)"
-                value={form.heightCm}
-                onChange={set("heightCm")}
-              />
+            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+              <BookingField label="Weight" unit="g" name="weightG" known={known.weightG} form={form} set={set} step="1" min="1" className="col-span-2" />
+              <div className="col-span-2">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Box size (L × B × H, cm)</p>
+                <div className="flex items-center gap-2">
+                  {[["lengthCm", "L"], ["breadthCm", "B"], ["heightCm", "H"]].map(([name, short], i) => (
+                    <Fragment key={name}>
+                      {i > 0 && <span className="text-muted-foreground">×</span>}
+                      {known[name] ? (
+                        <p className="min-w-0 flex-1 rounded-lg bg-muted/50 px-2.5 py-1.5 text-center font-mono text-sm tabular-nums">{form[name]}</p>
+                      ) : (
+                        <Input type="number" step="0.01" min="0.01" placeholder={short} aria-label={`${short} (cm)`} className="min-w-0 flex-1 text-center" value={form[name]} onChange={set(name)} />
+                      )}
+                    </Fragment>
+                  ))}
+                  <span className="text-xs text-muted-foreground">cm</span>
+                </div>
+              </div>
+              <p className="col-span-2 -mt-1 text-xs text-muted-foreground">
+                {weightIncomplete
+                  ? "Some items have no weight in Shopify, so the weight is a partial total — enter the full weight. "
+                  : "Weight comes from Shopify's item weights. "}
+                Box size comes from each item's packaging; anything missing is left for you to fill in.
+              </p>
             </div>
           )}
 
@@ -495,7 +507,7 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
               (!isEditing && shippableLines.length === 0) ||
               (isEditing || form.courier === "manual"
                 ? !form.awb || !form.carrierName
-                : !(Number(form.weightKg) > 0))
+                : !(Number(form.weightG) > 0))
             }
           >
             {isSaving ? "Saving…" : isEditing ? "Save changes" : "Book shipment"}

@@ -28,7 +28,7 @@ import {
 import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import { formatApiError } from "../lib/errors.js";
-import { stockLevel } from "../lib/status.js";
+import { stockLevel, unitStatus } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
 
@@ -45,22 +45,6 @@ const COLUMNS = [
   { id: "sku_available", header: "Available" },
   { id: "level", enableSorting: false, meta: { label: "Level", filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
 ];
-
-// InventoryUnit.Status choices — apps.inventory.models.
-function unitStatusTone(status) {
-  switch (status) {
-    case "in_stock":
-      return "success";
-    case "reserved":
-      return "pending";
-    case "sold":
-      return "info";
-    case "damaged":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
 
 function useDebounced(value, delayMs) {
   const [debounced, setDebounced] = useState(value);
@@ -98,21 +82,6 @@ function groupBySku(rows) {
 
 const UNITS_PAGE_SIZE = 50;
 
-const UNIT_STATUS_LABELS = {
-  in_stock: "In stock",
-  in_transit: "In transit",
-  reserved: "Reserved",
-  sold: "Sold",
-  returned: "Returned",
-  damaged: "Damaged",
-};
-
-// POS never changes a unit's status when it runs out; qty 0 is the real signal.
-function unitStatus(unit) {
-  if (unit.qty === 0 && unit.status === "in_stock") return { label: "Empty", tone: "neutral" };
-  return { label: UNIT_STATUS_LABELS[unit.status] ?? unit.status, tone: unitStatusTone(unit.status) };
-}
-
 function UnitsDrawer({ target, onOpenChange }) {
   const [page, setPage] = useState(1);
   const [hideEmpty, setHideEmpty] = useState(true);
@@ -123,7 +92,7 @@ function UnitsDrawer({ target, onOpenChange }) {
     scope ? { ...scope, page, min_qty: hideEmpty ? 1 : undefined } : undefined,
     { skip: !target }
   );
-  // Two cheap first-page reads give the header its "with stock / empty" split.
+  // Two cheap first-page reads give the header its "with stock / out of stock" split.
   const { data: allUnits } = useGetInventoryUnitsQuery(scope ? { ...scope, page: 1 } : undefined, { skip: !target });
   const { data: stocked } = useGetInventoryUnitsQuery(scope ? { ...scope, page: 1, min_qty: 1 } : undefined, {
     skip: !target,
@@ -145,7 +114,7 @@ function UnitsDrawer({ target, onOpenChange }) {
           <SheetDescription>
             {target?.locationLabel ? `At ${target.locationLabel}` : "Across every location"}
             {allUnits && stocked
-              ? ` · ${stocked.count} with stock · ${allUnits.count - stocked.count} empty`
+              ? ` · ${stocked.count} with stock · ${allUnits.count - stocked.count} out of stock`
               : ""}
           </SheetDescription>
         </SheetHeader>
@@ -162,12 +131,12 @@ function UnitsDrawer({ target, onOpenChange }) {
               checked={hideEmpty}
               onChange={(e) => setHideEmpty(e.target.checked)}
             />
-            Hide empty units (qty 0)
+            Hide out-of-stock units (qty 0)
           </label>
           {isFetching && !data && <Skeleton className="h-24 w-full" />}
           {!isFetching && !error && rows.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              {hideEmpty ? "No units with stock. Untick “Hide empty units” to see empty ones." : "No units found."}
+              {hideEmpty ? "No units with stock. Untick “Hide out-of-stock units” to see them." : "No units found."}
             </p>
           )}
           {rows.length > 0 && (
