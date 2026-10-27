@@ -41,7 +41,7 @@ function TabCount({ useCount, params }) {
   return count === undefined ? null : <span className="ml-1 tabular-nums opacity-70">({count.toLocaleString("en-IN")})</span>;
 }
 
-export default function SavedViews({ resource, params, onApply, useCount, allParams = {} }) {
+export default function SavedViews({ resource, params, onApply, useCount, allParams = {}, ignoreParams = [] }) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const admin = isAdminUser(user);
@@ -60,10 +60,12 @@ export default function SavedViews({ resource, params, onApply, useCount, allPar
 
   const mine = views.filter((v) => v.is_owner);
   const teamViews = views.filter((v) => !v.is_owner);
-  const active = views.find((v) => sameParams(v.params, params));
-  const hasFilters = Object.keys(params).length > 0;
+  // `ignoreParams` (e.g. "search") don't decide which tab is lit; saving still captures them.
+  const matchParams = Object.fromEntries(Object.entries(params).filter(([key]) => !ignoreParams.includes(key)));
+  const active = views.find((v) => sameParams(v.params, matchParams));
+  const hasFilters = Object.keys(matchParams).length > 0;
   // The "All" tab: nothing filtered, or (for a screen with a default filter) its explicit "everything" params.
-  const isAll = sameParams(params, allParams) || (!hasFilters && Object.keys(allParams).length === 0);
+  const isAll = sameParams(matchParams, allParams) || (!hasFilters && Object.keys(allParams).length === 0);
 
   const openSave = () => {
     setName("");

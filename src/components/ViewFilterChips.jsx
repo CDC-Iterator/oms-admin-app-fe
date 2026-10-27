@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { dateRangeLabel } from "../lib/dateRange.js";
+import { qtyRangeLabel } from "../lib/qtyRange.js";
 
 // Filters that arrive from a dashboard card or a saved view and have no column header.
 const LABELS = {
@@ -27,6 +28,7 @@ function columnPill(column, value) {
   const name = meta.label ?? (typeof header === "string" && header ? header : titleCase(column.id));
   let shown = String(value);
   if (meta.filterDateRange) shown = dateRangeLabel(value);
+  else if (meta.filterIntRange) shown = qtyRangeLabel(value);
   else if (meta.filterIds) {
     const count = String(value).split(",").filter(Boolean).length;
     shown = `${count} id${count === 1 ? "" : "s"}`;

@@ -5,9 +5,11 @@ import { ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ListFilter } from "luci
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button.jsx";
 import { DATE_PRESETS, dateRangeLabel, parseCustomRange } from "../lib/dateRange.js";
+import { QTY_PRESETS, buildQtyRange, parseQtyRange, qtyRangeLabel } from "../lib/qtyRange.js";
 import { Textarea } from "@/components/ui/textarea.jsx";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -158,6 +160,76 @@ function DateRangeFilter({ column, title }) {
   );
 }
 
+// Quantity filter: presets, or a custom Min/Max (either may be left open) — stored as ?qty=1.. / 0 / 2..9.
+function QtyRangeFilter({ column, title }) {
+  const value = column.getFilterValue() ?? "";
+  const [open, setOpen] = useState(false);
+  const [min, setMin] = useState("");
+  const [max, setMax] = useState("");
+  const invalid = min !== "" && max !== "" && Number(min) > Number(max);
+
+  const apply = (next) => {
+    column.setFilterValue(next || undefined);
+    setOpen(false);
+  };
+
+  return (
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          const current = parseQtyRange(value);
+          setMin(current.min);
+          setMax(current.max);
+        }
+      }}
+    >
+      <Popover.Trigger className="rounded p-0.5 hover:bg-muted" aria-label={`Filter ${title}`} title={value ? qtyRangeLabel(value) : undefined}>
+        <ListFilter className={cn("size-3", value ? "text-primary" : "text-muted-foreground/50")} />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner align="start" sideOffset={6} className="z-50">
+          <Popover.Popup className="w-60 rounded-lg bg-popover p-2 text-popover-foreground shadow-md ring-1 ring-foreground/10">
+            <div className="space-y-0.5">
+              {QTY_PRESETS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => apply(p.value)}
+                  className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted", value === p.value && "bg-muted font-medium")}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 space-y-2 border-t border-border px-2 pt-2.5">
+              <p className="text-xs font-medium text-muted-foreground">Custom range</p>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                Min
+                <input type="number" min={0} value={min} onChange={(e) => setMin(e.target.value)} className="w-24 rounded-md border border-input bg-transparent px-2 py-1 text-sm" />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                Max
+                <input type="number" min={0} value={max} onChange={(e) => setMax(e.target.value)} className="w-24 rounded-md border border-input bg-transparent px-2 py-1 text-sm" />
+              </label>
+              {invalid && <p className="text-xs text-destructive">Max is below min.</p>}
+              <div className="flex items-center justify-between pb-1">
+                <Button size="xs" variant="ghost" onClick={() => apply(undefined)}>
+                  Clear
+                </Button>
+                <Button size="xs" disabled={(min === "" && max === "") || invalid} onClick={() => apply(buildQtyRange(min, max))}>
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 // Header cell for a TanStack column: click to sort, and (when the column
 // defines `meta.filterOptions`) a menu to filter. Both are server-side.
 export function ColumnHeader({ column, title, align = "left" }) {
@@ -165,8 +237,11 @@ export function ColumnHeader({ column, title, align = "left" }) {
   const options = column.columnDef.meta?.filterOptions;
   const isIdList = column.columnDef.meta?.filterIds;
   const isDateRange = column.columnDef.meta?.filterDateRange;
+  const isQtyRange = column.columnDef.meta?.filterIntRange;
+  const isMulti = column.columnDef.meta?.filterMulti;
   const sorted = column.getIsSorted();
   const filter = column.getFilterValue() ?? "";
+  const selected = String(filter).split(",").filter(Boolean);
   const SortIcon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
 
   return (
@@ -186,6 +261,7 @@ export function ColumnHeader({ column, title, align = "left" }) {
       )}
       {isIdList && <IdListFilter column={column} title={title} />}
       {isDateRange && <DateRangeFilter column={column} title={title} />}
+      {isQtyRange && <QtyRangeFilter column={column} title={title} />}
       {options && (
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -195,18 +271,40 @@ export function ColumnHeader({ column, title, align = "left" }) {
             <ListFilter className={cn("size-3", filter ? "text-primary" : "text-muted-foreground/50")} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-36">
-            <DropdownMenuRadioGroup
-              value={filter || ALL}
-              onValueChange={(value) => column.setFilterValue(value === ALL ? undefined : value)}
-            >
-              <DropdownMenuRadioItem value={ALL}>All</DropdownMenuRadioItem>
-              <DropdownMenuSeparator />
-              {options.map((o) => (
-                <DropdownMenuRadioItem key={o.value} value={o.value}>
-                  {o.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
+            {isMulti ? (
+              <>
+                <DropdownMenuCheckboxItem checked={selected.length === 0} closeOnClick={false} onCheckedChange={() => column.setFilterValue(undefined)}>
+                  All
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                {options.map((o) => (
+                  <DropdownMenuCheckboxItem
+                    key={o.value}
+                    checked={selected.includes(String(o.value))}
+                    closeOnClick={false}
+                    onCheckedChange={(on) => {
+                      const next = on ? [...selected, String(o.value)] : selected.filter((v) => v !== String(o.value));
+                      column.setFilterValue(next.length ? next.join(",") : undefined);
+                    }}
+                  >
+                    {o.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </>
+            ) : (
+              <DropdownMenuRadioGroup
+                value={filter || ALL}
+                onValueChange={(value) => column.setFilterValue(value === ALL ? undefined : value)}
+              >
+                <DropdownMenuRadioItem value={ALL}>All</DropdownMenuRadioItem>
+                <DropdownMenuSeparator />
+                {options.map((o) => (
+                  <DropdownMenuRadioItem key={o.value} value={o.value}>
+                    {o.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

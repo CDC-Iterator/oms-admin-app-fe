@@ -25,10 +25,6 @@ import { unitStatus } from "../lib/status.js";
 const PAGE_SIZE = 50;
 const DEFAULT_ORDERING = "item_code";
 
-// Row total for a saved view's tab: a one-row page, only its `count` is read.
-const useViewCount = (params) =>
-  useGetInventoryUnitsQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
-
 // ?status= values of /api/inventory/units/ (apps.inventory.filters.InventoryUnitFilter).
 const STATUSES = [
   { value: "in_stock", label: "In stock" },
@@ -83,18 +79,22 @@ export default function Barcodes() {
   // barcode/location/ownership/status sort within each SKU, and qty/updated sort the whole list.
   const columns = useMemo(
     () => [
-      { id: "item_code", header: "Item code", size: 11 },
-      { id: "product", header: "Product", size: 22, enableSorting: false },
       { id: "barcode", header: "Barcode", size: 15 },
+      { id: "item_code", header: "Item code", size: 11 },
+      { id: "product", header: "Product", size: 20, enableSorting: false },
       {
         id: "location",
         header: "Location",
         size: 14,
-        meta: { filterOptions: (locations ?? []).map((l) => ({ value: String(l.id), label: l.name })), filterParam: "location_id" },
+        meta: {
+          filterOptions: (locations ?? []).map((l) => ({ value: String(l.id), label: l.name })),
+          filterParam: "location_id",
+          filterMulti: true,
+        },
       },
-      { id: "ownership", header: "Ownership", size: 10, meta: { filterOptions: OWNERSHIPS, filterParam: "ownership_type" } },
-      { id: "status", header: "Status", size: 11, meta: { filterOptions: STATUSES, filterParam: "status" } },
-      { id: "qty", header: "Qty", size: 6 },
+      { id: "ownership", header: "Ownership", size: 10, meta: { filterOptions: OWNERSHIPS, filterParam: "ownership_type", filterMulti: true } },
+      { id: "status", header: "Status", size: 12, meta: { filterOptions: STATUSES, filterParam: "status", filterMulti: true } },
+      { id: "qty", header: "Qty", size: 7, meta: { filterIntRange: true, filterParam: "qty" } },
       { id: "updated", header: "Updated", size: 11 },
     ],
     [locations]
@@ -105,6 +105,13 @@ export default function Barcodes() {
     defaultOrdering: DEFAULT_ORDERING,
   });
   const savedView = useSavedViewParams({ search, setSearch });
+  // A tab's count is its filters plus the live search, and picking a tab keeps that search.
+  const useViewCount = (viewParams) =>
+    useGetInventoryUnitsQuery(
+      { ...viewParams, search: debouncedSearch || viewParams.search, page: 1, page_size: 1 },
+      { selectFromResult: ({ data }) => ({ count: data?.count }) }
+    ).count;
+  const applyView = (saved) => savedView.apply(search && !saved?.search ? { ...saved, search } : saved);
   const { data, isFetching, error, refetch } = useGetInventoryUnitsQuery({
     page,
     ordering: orderingParam,
@@ -136,7 +143,7 @@ export default function Barcodes() {
           )}
         </div>
         <ViewFilterChips table={table} />
-        <SavedViews resource="barcodes" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
+        <SavedViews resource="barcodes" params={savedView.params} onApply={applyView} useCount={useViewCount} ignoreParams={["search"]} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
@@ -169,7 +176,7 @@ export default function Barcodes() {
               <div className="animate-indeterminate h-full w-1/3 bg-primary" />
             </div>
           )}
-          <Table className="table-scroll [&_td]:px-1.5 [&_th]:px-1.5">
+          <Table className="table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {table.getHeaderGroups()[0].headers.map((header) => (
@@ -192,11 +199,15 @@ export default function Barcodes() {
                 const status = unitStatus(unit);
                 return (
                   <TableRow key={unit.id}>
-                    <TableCell className="truncate py-1 font-mono text-xs">{unit.sku ?? "—"}</TableCell>
+                    <TableCell className="truncate py-1 font-mono text-xs" title={unit.barcode}>
+                      {unit.barcode}
+                    </TableCell>
+                    <TableCell className="truncate py-1 font-mono text-xs" title={unit.sku ?? undefined}>
+                      {unit.sku ?? "—"}
+                    </TableCell>
                     <TableCell className="truncate py-1 text-xs" title={unit.product}>
                       {unit.product}
                     </TableCell>
-                    <TableCell className="truncate py-1 font-mono text-xs">{unit.barcode}</TableCell>
                     <TableCell className="truncate py-1 text-xs">{unit.location}</TableCell>
                     <TableCell className="truncate py-1 text-xs capitalize">{unit.ownership_type}</TableCell>
                     <TableCell className="py-1">
