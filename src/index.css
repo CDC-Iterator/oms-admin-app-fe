@@ -336,3 +336,25 @@ button:not(:disabled),
   cursor: not-allowed;
   opacity: 0.4;
 }
+
+/* List tables: columns size to their content and the table scrolls sideways when wider than the screen.
+   Percentage / inline widths set in the markup are only hints for the old fixed layout, so they are ignored here;
+   a value longer than 30rem is cut with an ellipsis (its full text is in the cell's title). Only the table's own
+   cells are affected — a table nested in an expanded row, and full-width (colspan) cells, keep their own layout. */
+.table-scroll {
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
+}
+.table-scroll > colgroup > col {
+  width: auto !important;
+}
+.table-scroll > :is(thead, tbody) > tr > :is(th, td):not([colspan]) {
+  width: auto !important;
+  white-space: nowrap;
+  max-width: 30rem;
+}
+.table-scroll > tbody > tr > td:not([colspan]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

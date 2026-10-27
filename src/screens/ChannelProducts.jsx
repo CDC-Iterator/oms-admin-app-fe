@@ -346,7 +346,7 @@ export default function ChannelProducts() {
         // See InventoryList.jsx's own comment for why overflow-hidden lands
         // here and min-h-0/flex-1 on the nested [data-slot=table-container].
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1">
-          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
+          <Table className="table-compact table-scroll [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[35%] shadow-[inset_0_-1px_0_0_var(--border)]">
