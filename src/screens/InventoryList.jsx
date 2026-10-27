@@ -87,7 +87,6 @@ function groupBySku(rows) {
         product_title: row.product_title,
         rows: [],
         totalAvailable: 0,
-        totalOnHand: 0,
       };
       bySkuId.set(row.sku_id, group);
       groups.push(group);
