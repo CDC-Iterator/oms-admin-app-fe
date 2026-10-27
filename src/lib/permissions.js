@@ -8,4 +8,4 @@ export const isOperationsUser = (user) => user?.role === "operations";
 // Operations get the order-handling screens plus their own profile; everything else is hidden and redirected.
 export const canOpenPath = (user, pathname) =>
   !isOperationsUser(user) ||
-  /^\/(orders(\/.*)?|fulfillments|reports|settings\/profile)?$/.test(pathname);
+  /^\/(orders(\/.*)?|fulfillments|settings\/profile)?$/.test(pathname);

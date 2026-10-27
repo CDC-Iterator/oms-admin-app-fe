@@ -9,6 +9,8 @@ import { canOpenPath } from "./lib/permissions.js";
 import { ToastProvider } from "./providers/ToastProvider.jsx";
 import Barcodes from "./screens/Barcodes.jsx";
 import ActivityLog from "./screens/ActivityLog.jsx";
+import ReportBuilderList from "./screens/ReportBuilderList.jsx";
+import ReportEditor from "./screens/ReportEditor.jsx";
 import Exports from "./screens/Exports.jsx";
 import ChannelProducts from "./screens/ChannelProducts.jsx";
 import ChannelsList from "./screens/ChannelsList.jsx";
@@ -20,7 +22,6 @@ import FulfillmentLines from "./screens/FulfillmentLines.jsx";
 import OrdersList from "./screens/OrdersList.jsx";
 import ProductsList from "./screens/ProductsList.jsx";
 import Profile from "./screens/Profile.jsx";
-import Reports from "./screens/Reports.jsx";
 import UnmappedSkus from "./screens/UnmappedSkus.jsx";
 import UserManagement from "./screens/UserManagement.jsx";
 import Login from "./screens/auth/Login.jsx";
@@ -62,7 +63,9 @@ function AppRoutes() {
             element={<ChannelProducts />}
           />
           <Route path="/catalog/unmapped" element={<UnmappedSkus />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/reports" element={<ReportBuilderList />} />
+          <Route path="/reports/new" element={<ReportEditor />} />
+          <Route path="/reports/:id" element={<ReportEditor />} />
           <Route path="/settings/locations" element={<LocationsList />} />
           <Route path="/settings/exports" element={<Exports />} />
           <Route path="/settings/channels" element={<ChannelsList />} />

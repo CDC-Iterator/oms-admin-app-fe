@@ -7,7 +7,10 @@ export const EXPORT_STATUSES = [
   { value: "succeeded", label: "Succeeded" },
   { value: "failed", label: "Failed" },
 ];
-export const EXPORT_RESOURCES = [{ value: "barcodes", label: "Barcodes" }];
+export const EXPORT_RESOURCES = [
+  { value: "barcodes", label: "Barcodes" },
+  { value: "reports", label: "Reports" },
+];
 export const EXPORT_POLL_MS = 3000;
 
 export const exportResourceLabel = (key) => EXPORT_RESOURCES.find((r) => r.value === key)?.label ?? key;
