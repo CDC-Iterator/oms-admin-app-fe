@@ -11,7 +11,11 @@ export const activityApi = omsApi.injectEndpoints({
       transformResponse: unwrapList,
       providesTags: ["activity"],
     }),
+    // One row with, for a push to POS, what was sent and what POS answered (`attempts`).
+    getActivityRow: builder.query({
+      query: (id) => ({ url: `/api/inventory/sync-log/${id}/` }),
+    }),
   }),
 });
 
-export const { useGetActivityQuery } = activityApi;
+export const { useGetActivityQuery, useGetActivityRowQuery } = activityApi;

@@ -12,9 +12,10 @@ import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet.jsx";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
-import { useGetActivityQuery } from "../api/services/activity.js";
+import { useGetActivityQuery, useGetActivityRowQuery } from "../api/services/activity.js";
 import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import SavedViews from "../components/SavedViews.jsx";
@@ -79,7 +80,52 @@ function DetailRow({ label, children }) {
   );
 }
 
+const prettyJson = (text) => {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    return text;
+  }
+};
+
+const OUTCOME_TONE = { sent: "success", failed: "danger" };
+
+// What was POSTed to POS and how it answered, one block per attempt (SalesMaster, SalesDetails).
+function PosAttempts({ attempts }) {
+  return (
+    <div className="space-y-4">
+      {attempts.map((a) => (
+        <section key={a.id} className="space-y-2 rounded-lg border border-border p-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-mono font-medium">{a.topic || "Order"}</span>
+            <StatusBadge tone={OUTCOME_TONE[a.outcome] ?? "neutral"}>{a.outcome.replace(/_/g, " ")}</StatusBadge>
+            {a.http_status && <span className="font-mono text-xs text-muted-foreground">HTTP {a.http_status}</span>}
+            <span className="ml-auto text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</span>
+          </div>
+          {a.request && (
+            <div>
+              <h4 className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">Request sent to POS</h4>
+              <pre className="max-h-72 overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">{JSON.stringify(a.request, null, 2)}</pre>
+            </div>
+          )}
+          {(a.response || a.error) && (
+            <div>
+              <h4 className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">Response from POS</h4>
+              <pre className={cn("max-h-56 overflow-auto rounded-md p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap", a.outcome === "failed" ? "bg-destructive/10" : "bg-muted")}>
+                {a.response ? prettyJson(a.response) : a.error}
+              </pre>
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function ActivityDrawer({ row, onClose }) {
+  // The list rows stay light; the detail adds the POS request/response for pushes.
+  const { data: detail, isFetching: loadingDetail } = useGetActivityRowQuery(row?.id, { skip: !row });
+  const attempts = detail?.attempts ?? [];
   return (
     <Sheet open={Boolean(row)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full overflow-y-auto data-[side=right]:sm:max-w-[52rem]">
@@ -106,6 +152,20 @@ function ActivityDrawer({ row, onClose }) {
                   <pre className="max-h-72 overflow-auto rounded-md bg-destructive/10 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
                     {row.error}
                   </pre>
+                </section>
+              )}
+              {row.topic === "push_order_to_pos" && (
+                <section>
+                  <h3 className="mb-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">POS request and response</h3>
+                  {loadingDetail ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : attempts.length > 0 ? (
+                    <PosAttempts attempts={attempts} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      The request and response weren't recorded for this push — only pushes from now on keep them.
+                    </p>
+                  )}
                 </section>
               )}
               <section>
