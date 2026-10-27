@@ -19,6 +19,11 @@ export const reportsApi = omsApi.injectEndpoints({
       transformResponse: unwrapList,
       providesTags: ["reports"],
     }),
+    // Scoped to the caller's locations (apps.reports.operations_dashboard); refreshed every minute.
+    getOperationsDashboard: builder.query({
+      query: () => ({ url: "/api/reports/operations-dashboard/" }),
+      providesTags: ["reports"],
+    }),
     getSyncMismatchesReport: builder.query({
       query: () => ({ url: "/api/reports/sync-mismatches/" }),
       transformResponse: unwrapList,
@@ -32,4 +37,5 @@ export const {
   useGetOrderStatusSummaryReportQuery,
   useGetUnmappedSkusReportQuery,
   useGetSyncMismatchesReportQuery,
+  useGetOperationsDashboardQuery,
 } = reportsApi;
