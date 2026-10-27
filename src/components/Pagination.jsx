@@ -23,12 +23,12 @@ export default function Pagination({ page, pageSize, count, onPageChange, loadin
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between gap-3 pt-3">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3">
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         Page {page} of {totalPages} · {count} total
         {loading && <Loader2 className="size-3 animate-spin" aria-label="Loading" />}
       </p>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <Button variant="outline" size="icon-sm" disabled={loading || page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">
           <ChevronLeft className="size-3.5" />
         </Button>
@@ -41,9 +41,9 @@ export default function Pagination({ page, pageSize, count, onPageChange, loadin
             <Button
               key={token}
               variant={token === page ? "default" : "outline"}
-              size="icon-sm"
+              size="sm"
               disabled={loading}
-              className="font-mono tabular-nums"
+              className="min-w-7 shrink-0 px-2 font-mono tabular-nums"
               onClick={() => onPageChange(token)}
             >
               {token}

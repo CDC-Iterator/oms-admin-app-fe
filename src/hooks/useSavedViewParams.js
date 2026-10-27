@@ -11,5 +11,7 @@ export function useSavedViewParams({ search, setSearch }) {
     setSearchParams(new URLSearchParams(Object.entries(rest).map(([k, v]) => [k, String(v)])), { replace: true });
     setSearch(savedSearch ? String(savedSearch) : "");
   };
-  return { params, apply };
+  // Picking a tab keeps what's typed in the search box unless the view carries its own search.
+  const applyKeepingSearch = (saved) => apply(search && !saved?.search ? { ...saved, search } : saved);
+  return { params, apply, applyKeepingSearch };
 }

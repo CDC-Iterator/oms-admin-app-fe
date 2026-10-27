@@ -111,7 +111,6 @@ export default function Barcodes() {
       { ...viewParams, search: debouncedSearch || viewParams.search, page: 1, page_size: 1 },
       { selectFromResult: ({ data }) => ({ count: data?.count }) }
     ).count;
-  const applyView = (saved) => savedView.apply(search && !saved?.search ? { ...saved, search } : saved);
   const { data, isFetching, error, refetch } = useGetInventoryUnitsQuery({
     page,
     ordering: orderingParam,
@@ -143,7 +142,7 @@ export default function Barcodes() {
           )}
         </div>
         <ViewFilterChips table={table} />
-        <SavedViews resource="barcodes" params={savedView.params} onApply={applyView} useCount={useViewCount} ignoreParams={["search"]} />
+        <SavedViews resource="barcodes" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}

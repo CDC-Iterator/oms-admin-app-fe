@@ -29,10 +29,6 @@ import { syncTone } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
 
-// Row total for a saved view's tab: a one-row page, only its `count` is read.
-const useViewCount = (params) =>
-  useGetActivityQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
-
 // SyncLog.Direction/Status/channel choices — apps.inventory.models, apps.channels.models.
 const CHANNELS = [
   { value: "shopify", label: "Shopify" },
@@ -232,6 +228,12 @@ export default function ActivityLog() {
     defaultOrdering: DEFAULT_ORDERING,
   });
   const savedView = useSavedViewParams({ search, setSearch });
+  // A tab's count is its filters plus the live search, and picking a tab keeps that search.
+  const useViewCount = (viewParams) =>
+    useGetActivityQuery(
+      { ...viewParams, search: debouncedSearch || viewParams.search, page: 1, page_size: 1 },
+      { selectFromResult: ({ data }) => ({ count: data?.count }) }
+    ).count;
   const { data, isFetching, error, refetch } = useGetActivityQuery({
     page,
     ordering: orderingParam,
@@ -265,7 +267,7 @@ export default function ActivityLog() {
           )}
         </div>
         <ViewFilterChips table={table} keys={["topic", "since_hours"]} />
-        <SavedViews resource="activity" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
+        <SavedViews resource="activity" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}

@@ -29,10 +29,6 @@ import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
 
 const PAGE_SIZE = 50;
-
-// Row total for a saved view's tab: a one-row page, only its `count` is read.
-const useViewCount = (params) =>
-  useGetFulfillmentLinesQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
 // Column widths live on a <colgroup> so the table keeps its layout when the action bar replaces the header.
 const COLUMN_WIDTHS = [3, 19, 8, 8, 9, 3, 8, 12, 8, 9, 7, 6];
 // LineFulfillment.Stage — apps.orders.models. `all` (the "All" tab) turns the stage filter off.
@@ -107,6 +103,12 @@ export default function FulfillmentLines() {
     defaultOrdering: "-placed_at",
   });
   const savedView = useSavedViewParams({ search, setSearch });
+  // A tab's count is its filters plus the live search, and picking a tab keeps that search.
+  const useViewCount = (viewParams) =>
+    useGetFulfillmentLinesQuery(
+      { ...viewParams, search: debouncedSearch || viewParams.search, page: 1, page_size: 1 },
+      { selectFromResult: ({ data }) => ({ count: data?.count }) }
+    ).count;
   const stage = searchParams.get("stage");
 
   const updateParams = (updates) =>
@@ -238,7 +240,7 @@ export default function FulfillmentLines() {
           className="min-w-48 flex-1"
         />
         <ViewFilterChips table={table} keys={["invoice", "waiting_hours"]} />
-        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} allParams={ALL_PARAMS} />
+        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} allParams={ALL_PARAMS} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter
