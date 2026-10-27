@@ -61,7 +61,7 @@ const COLUMNS = [
   { id: "expand", header: "", size: 2.5, enableSorting: false },
   { id: "order", header: "Order", size: 8, meta: { filterIds: true, filterParam: "order_ids" } },
   { id: "invoice", header: "Invoice", size: 8.5, enableSorting: false },
-  { id: "placed_at", header: "Date", size: 10.5 },
+  { id: "placed_at", header: "Date", size: 10.5, meta: { filterDateRange: true, filterParam: "placed" } },
   { id: "channel", header: "Channel", size: 6.5, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
   { id: "customer", header: "Customer", size: 10, enableSorting: false },
   { id: "total", header: "Total", size: 6, align: "right" },

@@ -1,8 +1,11 @@
 import { X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { dateRangeLabel } from "../lib/dateRange.js";
+
 // Filters that arrive from a dashboard card or a saved view and have no column header; each chip clears one.
 const LABELS = {
+  placed: (v) => `Date: ${dateRangeLabel(v)}`,
   created: (v) => (v === "today" ? "Created today" : `Created ${v}`),
   waiting_hours: (v) => `Waiting over ${v}h`,
   since_hours: (v) => `Last ${v}h`,

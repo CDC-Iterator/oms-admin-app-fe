@@ -41,7 +41,7 @@ const COURIERS = [
 const COLUMNS = [
   { id: "item_code", header: "Item" },
   { id: "order", header: "Order", meta: { filterIds: true, filterParam: "order_ids" } },
-  { id: "placed_at", header: "Date" },
+  { id: "placed_at", header: "Date", meta: { filterDateRange: true, filterParam: "placed" } },
 ];
 
 // The warehouse(s) this line's confirmed unit actually sits in — the order's own allocated location is one value
@@ -178,7 +178,7 @@ export default function FulfillmentLines() {
         )}
       </div>
 
-      <ViewFilterChips keys={["invoice", "waiting_hours"]} />
+      <ViewFilterChips keys={["placed", "invoice", "waiting_hours"]} />
 
       {error ? (
         <Alert variant="destructive">
