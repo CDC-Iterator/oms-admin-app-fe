@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { Loader2, ScanBarcode } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -23,7 +23,7 @@ import { formatApiError } from "../lib/errors.js";
 import { unitStatus } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
-const DEFAULT_ORDERING = "-qty";
+const DEFAULT_ORDERING = "item_code";
 
 // Row total for a saved view's tab: a one-row page, only its `count` is read.
 const useViewCount = (params) =>
@@ -79,20 +79,23 @@ export default function Barcodes() {
 
   const { data: locationData } = useGetLocationsQuery();
   const locations = locationData?.rows;
-  // Column ids are the backend's ?ordering= keys (InventoryUnitViewSet); a sort orders within each SKU group.
+  // Column ids are the backend's ?ordering= keys: item_code (the default) groups a SKU's barcodes together,
+  // barcode/location/ownership/status sort within each SKU, and qty/updated sort the whole list.
   const columns = useMemo(
     () => [
-      { id: "barcode", header: "Barcode", size: 26 },
+      { id: "item_code", header: "Item code", size: 11 },
+      { id: "product", header: "Product", size: 22, enableSorting: false },
+      { id: "barcode", header: "Barcode", size: 15 },
       {
         id: "location",
         header: "Location",
-        size: 20,
+        size: 14,
         meta: { filterOptions: (locations ?? []).map((l) => ({ value: String(l.id), label: l.name })), filterParam: "location_id" },
       },
-      { id: "ownership", header: "Ownership", size: 13, meta: { filterOptions: OWNERSHIPS, filterParam: "ownership_type" } },
-      { id: "status", header: "Status", size: 15, meta: { filterOptions: STATUSES, filterParam: "status" } },
-      { id: "qty", header: "Qty", size: 9 },
-      { id: "updated", header: "Updated", size: 17 },
+      { id: "ownership", header: "Ownership", size: 10, meta: { filterOptions: OWNERSHIPS, filterParam: "ownership_type" } },
+      { id: "status", header: "Status", size: 11, meta: { filterOptions: STATUSES, filterParam: "status" } },
+      { id: "qty", header: "Qty", size: 6 },
+      { id: "updated", header: "Updated", size: 11 },
     ],
     [locations]
   );
@@ -111,21 +114,10 @@ export default function Barcodes() {
   const loading = useMinimumLoading(isFetching);
   const rows = data?.rows ?? [];
 
-  // The API returns a SKU's barcodes back to back, so a header row marks where each SKU starts on this page.
-  const groups = useMemo(() => {
-    const out = [];
-    for (const row of rows) {
-      const last = out[out.length - 1];
-      if (last && last.sku_id === row.sku_id) last.rows.push(row);
-      else out.push({ sku_id: row.sku_id, item_code: row.sku, product: row.product, rows: [row] });
-    }
-    return out;
-  }, [rows]);
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <p className="mb-4 shrink-0 text-sm text-muted-foreground">
-        Every barcode (unit) POS has reported, one row per barcode and location, grouped by SKU.
+        Every barcode (unit) POS has reported, one row per barcode and location. Sorted by item code, a SKU's barcodes stay together; sort by Qty or Updated to rank the whole list.
       </p>
 
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
@@ -196,36 +188,27 @@ export default function Barcodes() {
             </TableHeader>
             <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
               {rows.length === 0 && <TableEmptyRow colSpan={columns.length} />}
-              {groups.map((group) => (
-                <Fragment key={`${group.sku_id}-${group.rows[0].id}`}>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableCell colSpan={columns.length} className="py-1.5 text-xs">
-                      <span className="font-mono font-medium">{group.item_code ?? "No item code"}</span>
-                      <span className="ml-2 text-muted-foreground">{group.product}</span>
-                      <span className="ml-2 text-muted-foreground">
-                        · {group.rows.length} barcode{group.rows.length === 1 ? "" : "s"} on this page
-                      </span>
+              {rows.map((unit) => {
+                const status = unitStatus(unit);
+                return (
+                  <TableRow key={unit.id}>
+                    <TableCell className="truncate py-1 font-mono text-xs">{unit.sku ?? "—"}</TableCell>
+                    <TableCell className="truncate py-1 text-xs" title={unit.product}>
+                      {unit.product}
                     </TableCell>
+                    <TableCell className="truncate py-1 font-mono text-xs">{unit.barcode}</TableCell>
+                    <TableCell className="truncate py-1 text-xs">{unit.location}</TableCell>
+                    <TableCell className="truncate py-1 text-xs capitalize">{unit.ownership_type}</TableCell>
+                    <TableCell className="py-1">
+                      <StatusBadge tone={status.tone} className="status-chip--compact">
+                        {status.label}
+                      </StatusBadge>
+                    </TableCell>
+                    <TableCell className="py-1 font-mono text-xs tabular-nums">{unit.qty}</TableCell>
+                    <TableCell className="truncate py-1 font-mono text-xs">{formatWhen(unit.updated_at)}</TableCell>
                   </TableRow>
-                  {group.rows.map((unit) => {
-                    const status = unitStatus(unit);
-                    return (
-                      <TableRow key={unit.id}>
-                        <TableCell className="truncate py-1 font-mono text-xs">{unit.barcode}</TableCell>
-                        <TableCell className="truncate py-1 text-xs">{unit.location}</TableCell>
-                        <TableCell className="truncate py-1 text-xs capitalize">{unit.ownership_type}</TableCell>
-                        <TableCell className="py-1">
-                          <StatusBadge tone={status.tone} className="status-chip--compact">
-                            {status.label}
-                          </StatusBadge>
-                        </TableCell>
-                        <TableCell className="py-1 font-mono text-xs tabular-nums">{unit.qty}</TableCell>
-                        <TableCell className="truncate py-1 font-mono text-xs">{formatWhen(unit.updated_at)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </Fragment>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>
