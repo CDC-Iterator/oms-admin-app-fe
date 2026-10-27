@@ -106,7 +106,6 @@ export default function SavedViews({ resource, params, onApply, useCount }) {
         >
           {view.name}
           {useCount && <TabCount useCount={useCount} params={view.params} />}
-          {!view.is_owner && <span className="ml-1 text-[10px] opacity-60">shared</span>}
         </button>
         {(view.is_owner || admin) && (
           <button
