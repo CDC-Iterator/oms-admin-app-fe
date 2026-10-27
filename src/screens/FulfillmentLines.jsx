@@ -16,7 +16,9 @@ import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetInventoryLocationSummaryQuery } from "../api/services/inventory.js";
+import { useCreateManualShipmentMutation } from "../api/services/fulfilment.js";
 import { useBookFulfillmentLinesMutation, useGetFulfillmentLinesQuery } from "../api/services/orders.js";
+import { useToast } from "../hooks/useToast.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { canBookShipments } from "../lib/permissions.js";
 import ViewFilterChips from "../components/ViewFilterChips.jsx";
@@ -52,7 +54,10 @@ const COURIERS = [
   { value: "shipway", label: "Shipway" },
   { value: "shipdelight", label: "Shipdelight" },
   { value: "quicklee", label: "Quicklee" },
+  { value: "manual", label: "Manual (enter AWB and carrier)" },
 ];
+// Manual bookings: the carrier outside the integrated couriers; "Other" asks for a name.
+const MANUAL_CARRIERS = ["Tirupati", "Porter", "Other"];
 const COLUMNS = [
   { id: "item_code", header: "Item" },
   { id: "order", header: "Order", meta: { filterIds: true, filterParam: "order_ids" } },
@@ -164,17 +169,49 @@ export default function FulfillmentLines() {
   }, [bulkEnabled]);
   const [bookOpen, setBookOpen] = useState(false);
   const [courier, setCourier] = useState("shipway");
+  const { showToast } = useToast();
+  const [createManual, { isLoading: bookingManual, error: manualError }] = useCreateManualShipmentMutation();
+  const [carrier, setCarrier] = useState(MANUAL_CARRIERS[0]);
+  const [otherCarrier, setOtherCarrier] = useState("");
+  const [awb, setAwb] = useState("");
+  const [trackingUrl, setTrackingUrl] = useState("");
   const [bookResult, setBookResult] = useState(null);
   const [book, { isLoading: booking, error: bookError }] = useBookFulfillmentLinesMutation();
   // One shipment per order and warehouse — the same grouping the server uses.
   const shipmentCount = new Set([...selected.values()].map((r) => `${r.order_id}:${r.units[0]?.location_id}`)).size;
   const orderCount = new Set([...selected.values()].map((r) => r.order_id)).size;
+  // A manual booking is one shipment for one order, so it needs every selected line to be on the same order.
+  const manualOk = orderCount === 1;
+  const isManual = courier === "manual";
+  const carrierName = carrier === "Other" ? otherCarrier.trim() : carrier;
+  const manualReady = manualOk && Boolean(awb.trim()) && Boolean(carrierName);
   const closeBook = () => {
     setBookOpen(false);
     if (bookResult?.queued?.length) setSelected(new Map());
     setBookResult(null);
   };
+  const submitManual = async () => {
+    const first = [...selected.values()][0];
+    try {
+      await createManual({
+        orderId: first.order_id,
+        awb_number: awb.trim(),
+        carrier_name: carrierName,
+        tracking_url: trackingUrl.trim() || undefined,
+        line_items: [...selected.values()].map((r) => ({ line_item: r.line_id, qty: r.qty })),
+      }).unwrap();
+      showToast(`${first.order_name} booked with ${carrierName} (AWB ${awb.trim()}).`);
+      setSelected(new Map());
+      setAwb("");
+      setTrackingUrl("");
+      setOtherCarrier("");
+      setBookOpen(false);
+    } catch {
+      /* shown from manualError */
+    }
+  };
   const submitBook = async () => {
+    if (isManual) return submitManual();
     try {
       setBookResult(await book({ courier, line_ids: [...selected.keys()] }).unwrap());
     } catch {
@@ -392,7 +429,9 @@ export default function FulfillmentLines() {
             <DialogTitle>Book shipments</DialogTitle>
             <DialogDescription>
               {selected.size} line{selected.size === 1 ? "" : "s"} across {orderCount} order{orderCount === 1 ? "" : "s"} —{" "}
-              {shipmentCount} shipment{shipmentCount === 1 ? "" : "s"}, one per order and warehouse.
+              {isManual
+                ? "one manual shipment."
+                : `${shipmentCount} shipment${shipmentCount === 1 ? "" : "s"}, one per order and warehouse.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -430,17 +469,53 @@ export default function FulfillmentLines() {
                 <span className="text-xs font-medium">Courier</span>
                 <Select value={courier} onChange={(e) => setCourier(e.target.value)} className="w-full">
                   {COURIERS.map((c) => (
-                    <option key={c.value} value={c.value}>
+                    <option key={c.value} value={c.value} disabled={c.value === "manual" && !manualOk}>
                       {c.label}
+                      {c.value === "manual" && !manualOk ? " — select one order's lines" : ""}
                     </option>
                   ))}
                 </Select>
               </label>
-              <p className="text-xs text-muted-foreground">
-                Parcel weight is each shipment's lines (Shopify weight × quantity). A shipment whose lines have no
-                weight is skipped — book it from the order page.
-              </p>
-              {bookError && <p className="text-xs text-destructive">{formatApiError(bookError)}</p>}
+              {isManual ? (
+                <div className="space-y-3">
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium">Carrier</span>
+                    <Select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="w-full">
+                      {MANUAL_CARRIERS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                  {carrier === "Other" && (
+                    <Input placeholder="Carrier name" value={otherCarrier} onChange={(e) => setOtherCarrier(e.target.value)} maxLength={100} />
+                  )}
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium">AWB / tracking number</span>
+                    <Input value={awb} onChange={(e) => setAwb(e.target.value)} maxLength={100} />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium">Tracking link (optional)</span>
+                    <Input type="url" placeholder="https://…" value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} />
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Books the selected lines as one manual shipment and sends the tracking details to Shopify.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Parcel weight is each shipment's lines (Shopify weight × quantity). A shipment whose lines have no
+                  weight is skipped — book it from the order page.
+                </p>
+              )}
+              {isManual && !manualOk && (
+                <p className="text-xs text-destructive">
+                  A manual booking covers one order — the selected lines are on {orderCount} orders. Go back and select one order's lines.
+                </p>
+              )}
+              {isManual && manualError && <p className="text-xs text-destructive">{formatApiError(manualError)}</p>}
+              {!isManual && bookError && <p className="text-xs text-destructive">{formatApiError(bookError)}</p>}
             </div>
           )}
 
@@ -449,11 +524,15 @@ export default function FulfillmentLines() {
               <Button onClick={closeBook}>Done</Button>
             ) : (
               <>
-                <Button variant="outline" onClick={closeBook} disabled={booking}>
+                <Button variant="outline" onClick={closeBook} disabled={booking || bookingManual}>
                   Cancel
                 </Button>
-                <Button onClick={submitBook} disabled={booking}>
-                  {booking ? "Booking…" : `Book ${shipmentCount} shipment${shipmentCount === 1 ? "" : "s"}`}
+                <Button onClick={submitBook} disabled={booking || bookingManual || (isManual && !manualReady)}>
+                  {booking || bookingManual
+                    ? "Booking…"
+                    : isManual
+                      ? "Book manually"
+                      : `Book ${shipmentCount} shipment${shipmentCount === 1 ? "" : "s"}`}
                 </Button>
               </>
             )}
