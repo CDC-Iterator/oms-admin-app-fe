@@ -10,9 +10,10 @@ import {
   useGetOrderStatusSummaryReportQuery,
   useGetUnmappedSkusReportQuery,
 } from "../api/services/reports.js";
-import { isOperationsUser } from "../lib/permissions.js";
+import { isAdminUser, isOperationsUser } from "../lib/permissions.js";
 import { reservationTone } from "../lib/status.js";
 import { useAuth } from "../hooks/useAuth.js";
+import AdminDashboard from "./AdminDashboard.jsx";
 import OperationsDashboard from "./OperationsDashboard.jsx";
 
 function MetricCard({ icon: Icon, label, value, isLoading, tone }) {
@@ -39,8 +40,10 @@ function MetricCard({ icon: Icon, label, value, isLoading, tone }) {
 // dashboard/stats aggregation endpoint exists on the backend.
 export default function Dashboard() {
   const { user } = useAuth();
-  // Operations get their own, location-scoped dashboard (hooks below stay unconditional).
-  return isOperationsUser(user) ? <OperationsDashboard /> : <GlobalDashboard />;
+  // Operations get a location-scoped dashboard, admins the business/health one; reporting keeps the plain totals.
+  if (isOperationsUser(user)) return <OperationsDashboard />;
+  if (isAdminUser(user)) return <AdminDashboard />;
+  return <GlobalDashboard />;
 }
 
 function GlobalDashboard() {

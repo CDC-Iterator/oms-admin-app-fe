@@ -19,6 +19,11 @@ export const reportsApi = omsApi.injectEndpoints({
       transformResponse: unwrapList,
       providesTags: ["reports"],
     }),
+    // Admin only (apps.reports.admin_dashboard): business, fulfilment, integration health, data quality.
+    getAdminDashboard: builder.query({
+      query: () => ({ url: "/api/reports/admin-dashboard/" }),
+      providesTags: ["reports"],
+    }),
     // Scoped to the caller's locations (apps.reports.operations_dashboard); refreshed every minute.
     getOperationsDashboard: builder.query({
       query: () => ({ url: "/api/reports/operations-dashboard/" }),
@@ -38,4 +43,5 @@ export const {
   useGetUnmappedSkusReportQuery,
   useGetSyncMismatchesReportQuery,
   useGetOperationsDashboardQuery,
+  useGetAdminDashboardQuery,
 } = reportsApi;
