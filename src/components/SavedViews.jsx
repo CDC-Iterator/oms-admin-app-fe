@@ -41,7 +41,7 @@ function TabCount({ useCount, params }) {
   return count === undefined ? null : <span className="ml-1 tabular-nums opacity-70">({count.toLocaleString("en-IN")})</span>;
 }
 
-export default function SavedViews({ resource, params, onApply, useCount }) {
+export default function SavedViews({ resource, params, onApply, useCount, allParams = {} }) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const admin = isAdminUser(user);
@@ -62,6 +62,8 @@ export default function SavedViews({ resource, params, onApply, useCount }) {
   const teamViews = views.filter((v) => !v.is_owner);
   const active = views.find((v) => sameParams(v.params, params));
   const hasFilters = Object.keys(params).length > 0;
+  // The "All" tab: nothing filtered, or (for a screen with a default filter) its explicit "everything" params.
+  const isAll = sameParams(params, allParams) || (!hasFilters && Object.keys(allParams).length === 0);
 
   const openSave = () => {
     setName("");
@@ -167,13 +169,13 @@ export default function SavedViews({ resource, params, onApply, useCount }) {
         aria-label="Saved views"
         className="flex items-center gap-1 overflow-x-auto border-b border-border pb-px [scrollbar-width:thin]"
       >
-        <button type="button" role="tab" aria-selected={!active && !hasFilters} onClick={() => onApply({})} className={tab(!active && !hasFilters)}>
+        <button type="button" role="tab" aria-selected={!active && isAll} onClick={() => onApply(allParams)} className={tab(!active && isAll)}>
           All
-          {useCount && <TabCount useCount={useCount} params={{}} />}
+          {useCount && <TabCount useCount={useCount} params={allParams} />}
         </button>
         {mine.map(renderView)}
         {teamViews.map(renderView)}
-        {hasFilters && !active && (
+        {hasFilters && !active && !isAll && (
           <button type="button" onClick={openSave} className={tab(false) + " flex items-center gap-1"}>
             <Plus className="size-3.5" />
             Save view
