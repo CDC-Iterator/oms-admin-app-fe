@@ -43,9 +43,7 @@ const LEVEL_OPTIONS = [
 const COLUMNS = [
   { id: "product", header: "Product" },
   { id: "item_code", header: "Item code" },
-  { id: "committed", header: "Committed" },
   { id: "available", header: "Available" },
-  { id: "on_hand", header: "On hand" },
   { id: "level", enableSorting: false, meta: { label: "Level", filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
 ];
 
@@ -88,7 +86,6 @@ function groupBySku(rows) {
         item_code: row.sku,
         product_title: row.product_title,
         rows: [],
-        totalCommitted: 0,
         totalAvailable: 0,
         totalOnHand: 0,
       };
@@ -96,9 +93,7 @@ function groupBySku(rows) {
       groups.push(group);
     }
     group.rows.push(row);
-    group.totalCommitted += row.committed_qty;
     group.totalAvailable += row.available_qty;
-    group.totalOnHand += row.on_hand_qty;
   }
   return groups;
 }
@@ -390,9 +385,7 @@ export default function InventoryList() {
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
                     {/* Quantity sorts would scatter the per-sku groups, so they only apply to a location tab. */}
-                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">Committed</TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">Available</TableHead>
-                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">On hand</TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("level")} title="Level" align="center" />
                     </TableHead>
@@ -400,15 +393,13 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isEmpty && <TableEmptyRow colSpan={7} />}
+                  {isEmpty && <TableEmptyRow colSpan={5} />}
                   {groups.map((group) => {
                     const groupLevel = stockLevel(group.totalAvailable);
                     return (
                       <Fragment key={group.sku_id}>
-                        {/* Same 7 columns as its child rows — Item
-                            code/Committed/Available/On hand here are this
-                            sku's own row (item code once, not repeated per
-                            location) / the sum of every row below it. */}
+                        {/* Same 5 columns as its child rows — item code once (not repeated per
+                            location), Available the sum of every row below it. */}
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
                           <TableCell className="truncate py-2 font-medium" title={group.product_title}>
                             {group.product_title}{" "}
@@ -417,9 +408,7 @@ export default function InventoryList() {
                             </StatusBadge>
                           </TableCell>
                           <TableCell className="font-mono text-xs">{group.item_code ?? "—"}</TableCell>
-                          <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalCommitted}</TableCell>
                           <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalAvailable}</TableCell>
-                          <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalOnHand}</TableCell>
                           <TableCell className="text-center">
                             <StatusBadge tone={groupLevel.tone}>{groupLevel.label}</StatusBadge>
                           </TableCell>
@@ -450,9 +439,7 @@ export default function InventoryList() {
                                 {row.location}
                               </TableCell>
                               <TableCell />
-                              <TableCell className="text-center font-mono text-xs tabular-nums">{row.committed_qty}</TableCell>
                               <TableCell className="text-center font-mono text-xs tabular-nums">{row.available_qty}</TableCell>
-                              <TableCell className="text-center font-mono text-xs tabular-nums">{row.on_hand_qty}</TableCell>
                               <TableCell className="text-center">
                                 <StatusBadge tone={level.tone}>{level.label}</StatusBadge>
                               </TableCell>
@@ -493,13 +480,7 @@ export default function InventoryList() {
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
-                      <ColumnHeader column={table.getColumn("committed")} title="Committed" align="center" />
-                    </TableHead>
-                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("available")} title="Available" align="center" />
-                    </TableHead>
-                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
-                      <ColumnHeader column={table.getColumn("on_hand")} title="On hand" align="center" />
                     </TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("level")} title="Level" align="center" />
@@ -508,7 +489,7 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isEmpty && <TableEmptyRow colSpan={7} />}
+                  {isEmpty && <TableEmptyRow colSpan={5} />}
                   {flatRows.map((row) => {
                     const level = stockLevel(row.available_qty);
                     return (
@@ -517,9 +498,7 @@ export default function InventoryList() {
                           {row.product_title}
                         </TableCell>
                         <TableCell className="font-mono text-xs">{row.sku ?? "—"}</TableCell>
-                        <TableCell className="text-center font-mono text-xs tabular-nums">{row.committed_qty}</TableCell>
                         <TableCell className="text-center font-mono text-xs tabular-nums">{row.available_qty}</TableCell>
-                        <TableCell className="text-center font-mono text-xs tabular-nums">{row.on_hand_qty}</TableCell>
                         <TableCell className="text-center">
                           <StatusBadge tone={level.tone}>{level.label}</StatusBadge>
                         </TableCell>
