@@ -26,6 +26,10 @@ import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
 
 const PAGE_SIZE = 50;
+
+// Row total for a saved view's tab: a one-row page, only its `count` is read.
+const useViewCount = (params) =>
+  useGetFulfillmentLinesQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
 // Column widths live on a <colgroup> so the table keeps its layout when the action bar replaces the header.
 const COLUMN_WIDTHS = [3, 22, 8, 10, 9, 3, 10, 11, 10, 7, 7];
 const COURIERS = [
@@ -162,7 +166,7 @@ export default function FulfillmentLines() {
           }}
           className="min-w-48 flex-1"
         />
-        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} />
+        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter

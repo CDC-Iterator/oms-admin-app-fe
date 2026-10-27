@@ -33,8 +33,14 @@ const sameParams = (a, b) => {
  * Scrollable saved-view tabs for a list screen: pick a saved filter set, or save the current one.
  * `resource` is the saved-view resource key (orders | fulfillments | inventory | activity);
  * `params` the screen's current filters and `onApply(params)` restores a saved set.
+ * `useCount(params)` is a hook returning how many rows a view's filters match, shown on its tab.
  */
-export default function SavedViews({ resource, params, onApply }) {
+function TabCount({ useCount, params }) {
+  const count = useCount(params);
+  return count === undefined ? null : <span className="ml-1 tabular-nums opacity-70">({count.toLocaleString("en-IN")})</span>;
+}
+
+export default function SavedViews({ resource, params, onApply, useCount }) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const admin = isAdminUser(user);
@@ -99,6 +105,7 @@ export default function SavedViews({ resource, params, onApply }) {
           title={view.is_owner ? undefined : `Shared by ${view.owner}`}
         >
           {view.name}
+          {useCount && <TabCount useCount={useCount} params={view.params} />}
           {!view.is_owner && <span className="ml-1 text-[10px] opacity-60">shared</span>}
         </button>
         {(view.is_owner || admin) && (
@@ -127,6 +134,7 @@ export default function SavedViews({ resource, params, onApply }) {
       >
         <button type="button" role="tab" aria-selected={!active && !hasFilters} onClick={() => onApply({})} className={tab(!active && !hasFilters)}>
           All
+          {useCount && <TabCount useCount={useCount} params={{}} />}
         </button>
         {mine.map(renderView)}
         {teamViews.map(renderView)}

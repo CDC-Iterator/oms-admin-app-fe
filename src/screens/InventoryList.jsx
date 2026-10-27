@@ -104,6 +104,13 @@ function groupBySku(rows) {
 
 const UNITS_PAGE_SIZE = 50;
 
+// Row total for a saved view's tab: a one-row page, only its `count` is read. The screen's `location` tab is the API's `location_id`.
+const useViewCount = ({ location, ...params }) =>
+  useGetInventoryLedgerQuery(
+    { ...params, location_id: location || undefined, page: 1, page_size: 1 },
+    { selectFromResult: ({ data }) => ({ count: data?.count }) }
+  ).count;
+
 const UNIT_STATUS_LABELS = {
   in_stock: "In stock",
   in_transit: "In transit",
@@ -305,7 +312,7 @@ export default function InventoryList() {
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full"
         />
-        <SavedViews resource="inventory" params={savedView.params} onApply={savedView.apply} />
+        <SavedViews resource="inventory" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter

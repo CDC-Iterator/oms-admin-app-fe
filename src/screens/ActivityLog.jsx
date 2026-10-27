@@ -24,6 +24,10 @@ import { syncTone } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
 
+// Row total for a saved view's tab: a one-row page, only its `count` is read.
+const useViewCount = (params) =>
+  useGetActivityQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
+
 // SyncLog.Direction/Status/channel choices — apps.inventory.models, apps.channels.models.
 const CHANNELS = [
   { value: "shopify", label: "Shopify" },
@@ -175,7 +179,7 @@ export default function ActivityLog() {
             />
           )}
         </div>
-        <SavedViews resource="activity" params={savedView.params} onApply={savedView.apply} />
+        <SavedViews resource="activity" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
