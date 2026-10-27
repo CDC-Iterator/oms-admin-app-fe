@@ -42,6 +42,7 @@ const COLUMNS = [
   { id: "product", header: "Product" },
   { id: "item_code", header: "Item code" },
   { id: "available", header: "Available" },
+  { id: "sku_available", header: "Available" },
   { id: "level", enableSorting: false, meta: { label: "Level", filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
 ];
 
@@ -373,7 +374,10 @@ export default function InventoryList() {
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
                     {/* Quantity sorts would scatter the per-sku groups, so they only apply to a location tab. */}
-                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">Available</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                      {/* Sorts whole SKUs by their total across locations. */}
+                      <ColumnHeader column={table.getColumn("sku_available")} title="Available" align="center" />
+                    </TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("level")} title="Level" align="center" />
                     </TableHead>
