@@ -17,6 +17,7 @@ const PAGE_TITLES = {
   "/catalog/channel-products": "Channel Products",
   "/catalog/unmapped": "Unmapped SKUs",
   "/settings/locations": "Locations",
+  "/settings/exports": "Exports",
   "/settings/channels": "Channels",
   "/settings/activity": "Activity Log",
   "/settings/profile": "Profile",

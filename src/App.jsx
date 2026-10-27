@@ -9,6 +9,7 @@ import { canOpenPath } from "./lib/permissions.js";
 import { ToastProvider } from "./providers/ToastProvider.jsx";
 import Barcodes from "./screens/Barcodes.jsx";
 import ActivityLog from "./screens/ActivityLog.jsx";
+import Exports from "./screens/Exports.jsx";
 import ChannelProducts from "./screens/ChannelProducts.jsx";
 import ChannelsList from "./screens/ChannelsList.jsx";
 import Dashboard from "./screens/Dashboard.jsx";
@@ -63,6 +64,7 @@ function AppRoutes() {
           <Route path="/catalog/unmapped" element={<UnmappedSkus />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings/locations" element={<LocationsList />} />
+          <Route path="/settings/exports" element={<Exports />} />
           <Route path="/settings/channels" element={<ChannelsList />} />
           <Route path="/settings/activity" element={<ActivityLog />} />
           <Route path="/settings/profile" element={<Profile />} />

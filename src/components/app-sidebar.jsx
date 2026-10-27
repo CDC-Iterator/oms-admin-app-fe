@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart3,
   Boxes,
+  FileDown,
   ScanBarcode,
   PackageCheck,
   LayoutDashboard,
@@ -54,6 +55,7 @@ const CATALOG_ITEMS = [
 
 const SETTINGS_ITEMS = [
   { title: "Locations", url: "/settings/locations", icon: Warehouse },
+  { title: "Exports", url: "/settings/exports", icon: FileDown },
 ];
 const PROFILE_ITEMS = [
   { title: "Profile", url: "/settings/profile", icon: UserCircle },

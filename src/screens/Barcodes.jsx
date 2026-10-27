@@ -9,6 +9,7 @@ import Pagination from "../components/Pagination.jsx";
 import SavedViews from "../components/SavedViews.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
+import ExportMenu from "../components/ExportMenu.jsx";
 import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -141,6 +142,7 @@ export default function Barcodes() {
             />
           )}
         </div>
+        <ExportMenu resource="barcodes" params={savedView.params} />
         <ViewFilterChips table={table} />
         <SavedViews resource="barcodes" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
         {activeFilters > 0 && (
