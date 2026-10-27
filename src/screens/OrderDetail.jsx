@@ -572,10 +572,15 @@ export default function OrderDetail() {
 
   // Prev/next only when opened from the list (it passes the visible page's ids in router state).
   const listIds = location.state?.orderIds;
+  // The list screen (with its filters in the URL) and search text this order was opened from.
+  const from = location.state?.from;
+  const backTo = from ?? "/orders";
+  const backState = { search: location.state?.search };
+  const backLabel = from?.startsWith("/fulfillments") ? "Fulfillments" : "Orders";
   const listIndex = Array.isArray(listIds) ? listIds.indexOf(Number(id)) : -1;
   const neighbourId = (step) => {
     const target = listIndex >= 0 ? listIds[listIndex + step] : undefined;
-    return target === undefined ? undefined : () => navigate(`/orders/${target}`, { state: { orderIds: listIds } });
+    return target === undefined ? undefined : () => navigate(`/orders/${target}`, { state: { ...location.state, orderIds: listIds } });
   };
 
   const toggleLineSelection = (lineId, checked) => {
@@ -592,7 +597,10 @@ export default function OrderDetail() {
       {order ? (
         <OrderAppBar
           order={order}
-          onBack={() => navigate("/orders")}
+          onBack={() => navigate(backTo, { state: backState })}
+          backTo={backTo}
+          backState={backState}
+          backLabel={backLabel}
           onPrev={neighbourId(-1)}
           onNext={neighbourId(1)}
           actions={
@@ -609,9 +617,9 @@ export default function OrderDetail() {
           }
         />
       ) : (
-        <Button variant="ghost" size="sm" className="mb-2" onClick={() => navigate("/orders")}>
+        <Button variant="ghost" size="sm" className="mb-2" onClick={() => navigate(backTo, { state: backState })}>
           <ArrowLeft className="size-3.5" />
-          Back to orders
+          Back to {backLabel.toLowerCase()}
         </Button>
       )}
 

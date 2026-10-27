@@ -25,7 +25,10 @@ import {
   useGetInventoryLocationSummaryQuery,
   useGetInventoryUnitsQuery,
 } from "../api/services/inventory.js";
+import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
+import SavedViews from "../components/SavedViews.jsx";
+import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { formatApiError } from "../lib/errors.js";
 import { stockLevel } from "../lib/status.js";
 
@@ -43,7 +46,7 @@ const COLUMNS = [
   { id: "committed", header: "Committed" },
   { id: "available", header: "Available" },
   { id: "on_hand", header: "On hand" },
-  { id: "level", enableSorting: false, meta: { filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
+  { id: "level", enableSorting: false, meta: { label: "Level", filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
 ];
 
 // InventoryUnit.Status choices — apps.inventory.models.
@@ -101,6 +104,13 @@ function groupBySku(rows) {
 }
 
 const UNITS_PAGE_SIZE = 50;
+
+// Row total for a saved view's tab: a one-row page, only its `count` is read. The screen's `location` tab is the API's `location_id`.
+const useViewCount = ({ location, ...params }) =>
+  useGetInventoryLedgerQuery(
+    { ...params, location_id: location || undefined, page: 1, page_size: 1 },
+    { selectFromResult: ({ data }) => ({ count: data?.count }) }
+  ).count;
 
 const UNIT_STATUS_LABELS = {
   in_stock: "In stock",
@@ -267,6 +277,7 @@ export default function InventoryList() {
     columns: COLUMNS,
     defaultOrdering: "item_code",
   });
+  const savedView = useSavedViewParams({ search, setSearch });
   const { data, isFetching, error, refetch } = useGetInventoryLedgerQuery({
     page,
     search: searchParam,
@@ -295,13 +306,15 @@ export default function InventoryList() {
           : "Every SKU stocked at this location — the same ledger every channel's availability is pushed from."}
       </p>
 
-      <div className="mb-3 flex shrink-0 items-center gap-2">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Input
           placeholder="Search item code, location…"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full"
         />
+        <ViewFilterChips table={table} />
+        <SavedViews resource="inventory" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter

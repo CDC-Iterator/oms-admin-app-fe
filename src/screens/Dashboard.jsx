@@ -10,7 +10,11 @@ import {
   useGetOrderStatusSummaryReportQuery,
   useGetUnmappedSkusReportQuery,
 } from "../api/services/reports.js";
+import { isAdminUser, isOperationsUser } from "../lib/permissions.js";
 import { reservationTone } from "../lib/status.js";
+import { useAuth } from "../hooks/useAuth.js";
+import AdminDashboard from "./AdminDashboard.jsx";
+import OperationsDashboard from "./OperationsDashboard.jsx";
 
 function MetricCard({ icon: Icon, label, value, isLoading, tone }) {
   return (
@@ -35,6 +39,14 @@ function MetricCard({ icon: Icon, label, value, isLoading, tone }) {
 // Composed entirely from real report endpoints (apps.reports) — no
 // dashboard/stats aggregation endpoint exists on the backend.
 export default function Dashboard() {
+  const { user } = useAuth();
+  // Operations get a location-scoped dashboard, admins the business/health one; reporting keeps the plain totals.
+  if (isOperationsUser(user)) return <OperationsDashboard />;
+  if (isAdminUser(user)) return <AdminDashboard />;
+  return <GlobalDashboard />;
+}
+
+function GlobalDashboard() {
   const { data: statusRows, isFetching: statusLoading } = useGetOrderStatusSummaryReportQuery();
   const { data: unmapped, isFetching: unmappedLoading } = useGetUnmappedSkusReportQuery();
   const { data: channelSales, isFetching: salesLoading } = useGetChannelSalesReportQuery();

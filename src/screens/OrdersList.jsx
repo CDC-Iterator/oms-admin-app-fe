@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { ChevronDown, ChevronRight, Loader2, Receipt } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
 import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
@@ -16,20 +16,38 @@ import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
-import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
+import { useGetOrderQuery, useGetOrdersQuery } from "../api/services/orders.js";
+import ViewFilterChips, { VIEW_ONLY_FILTERS } from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
+import SavedViews from "../components/SavedViews.jsx";
+import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
-import { fulfillmentTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
+import { fulfillmentTone, orderTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
+const VIEW_FILTERS = ["dropship", "pos_eligible", "unit_status", "created", "waiting_hours", "profile"];
+
+// Row total for a saved view's tab: a one-row page, only its `count` is read.
+const useViewCount = (params) =>
+  useGetOrdersQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
 
 // Order.channel choices — apps.channels.models.
 const CHANNELS = [
   { value: "shopify", label: "Shopify" },
   { value: "tatacliq", label: "TataCliq" },
   { value: "pos", label: "POS" },
+];
+
+// Order.Status choices — apps.orders.models.
+const ORDER_STATUSES = [
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "returned", label: "Returned" },
+  { value: "rto", label: "RTO" },
+  { value: "completed", label: "Completed" },
 ];
 
 const PAYMENT_STATUSES = ["paid", "partially_paid", "pending", "refunded", "partially_refunded", "voided"].map((v) => ({
@@ -42,15 +60,16 @@ const FULFILLMENT_STATUSES = ["unfulfilled", "partial", "fulfilled", "restocked"
 const COLUMNS = [
   { id: "expand", header: "", size: 2.5, enableSorting: false },
   { id: "order", header: "Order", size: 8, meta: { filterIds: true, filterParam: "order_ids" } },
-  { id: "invoice", header: "Invoice", size: 9, enableSorting: false },
-  { id: "placed_at", header: "Date", size: 11.5 },
-  { id: "channel", header: "Channel", size: 7, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
-  { id: "customer", header: "Customer", size: 12, enableSorting: false },
-  { id: "total", header: "Total", size: 6.5, align: "right" },
-  { id: "payment", header: "Payment", size: 11, enableSorting: false, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status" } },
-  { id: "fulfillment", header: "Fulfillment", size: 13, enableSorting: false, meta: { filterOptions: FULFILLMENT_STATUSES, filterParam: "fulfillment_status" } },
-  { id: "delivery", header: "Delivery", size: 9.5, enableSorting: false },
-  { id: "destination", header: "Destination", size: 10, enableSorting: false },
+  { id: "invoice", header: "Invoice", size: 8.5, enableSorting: false },
+  { id: "placed_at", header: "Date", size: 10.5, meta: { filterDateRange: true, filterParam: "placed" } },
+  { id: "channel", header: "Channel", size: 6.5, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
+  { id: "customer", header: "Customer", size: 10, enableSorting: false },
+  { id: "total", header: "Total", size: 6, align: "right" },
+  { id: "status", header: "Status", size: 8, enableSorting: false, meta: { filterOptions: ORDER_STATUSES, filterParam: "status" } },
+  { id: "payment", header: "Payment", size: 10, enableSorting: false, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status" } },
+  { id: "fulfillment", header: "Fulfillment", size: 11, enableSorting: false, meta: { filterOptions: FULFILLMENT_STATUSES, filterParam: "fulfillment_status" } },
+  { id: "delivery", header: "Delivery", size: 8.5, enableSorting: false },
+  { id: "destination", header: "Destination", size: 10.5, enableSorting: false },
 ];
 const COLUMN_COUNT = COLUMNS.length;
 const DEFAULT_ORDERING = "-placed_at";
@@ -130,7 +149,9 @@ function LineItemsRow({ orderId }) {
 }
 
 export default function OrdersList() {
-  const [search, setSearch] = useState("");
+  const location = useLocation();
+  // Coming back from an order restores the search text too (the filters themselves live in the URL).
+  const [search, setSearch] = useState(location.state?.search ?? new URLSearchParams(location.search).get("search") ?? "");
   const debouncedSearch = useDebounced(search, 300);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
 
@@ -139,7 +160,6 @@ export default function OrdersList() {
   // on the same page AND tab instead of resetting either.
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const status = searchParams.get("status") || "";
 
   const updateParams = (updates) => {
     setSearchParams(
@@ -164,7 +184,6 @@ export default function OrdersList() {
   // React.StrictMode's dev-only double-invoke defeats any ref-based "skip
   // the first run" guard), clobbering ?page=/?status= from a
   // refreshed/shared URL.
-  const handleStatusChange = (nextStatus) => updateParams({ status: nextStatus, page: null });
   const handleSearchChange = (value) => {
     setSearch(value);
     setPage(1);
@@ -186,20 +205,23 @@ export default function OrdersList() {
     columns: COLUMNS,
     defaultOrdering: DEFAULT_ORDERING,
   });
+  const savedView = useSavedViewParams({ search, setSearch });
 
   const searchParam = debouncedSearch || undefined;
+  // Filters only saved views set (no column header): ShipTurtle, POS-processable, suggested units.
+  const viewFilters = Object.fromEntries(
+    VIEW_FILTERS.map((key) => [key, searchParams.get(key) || undefined])
+  );
   const { data, isFetching, error, refetch } = useGetOrdersQuery({
+    ...viewFilters,
     page,
-    status: status || undefined,
     ordering: orderingParam,
     ...filterParams,
     search: searchParam,
   });
-  const { data: statusSummary } = useGetOrderStatusSummaryQuery({ ...filterParams, search: searchParam });
   // Held visible for a moment even when the API answers instantly, so the user sees something happened.
   const loading = useMinimumLoading(isFetching);
   const rows = data?.rows ?? [];
-  const totalCount = (statusSummary ?? []).reduce((sum, s) => sum + s.count, 0);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -222,6 +244,8 @@ export default function OrdersList() {
             />
           )}
         </div>
+        <ViewFilterChips table={table} keys={VIEW_ONLY_FILTERS} />
+        <SavedViews resource="orders" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button
             size="sm"
@@ -231,34 +255,6 @@ export default function OrdersList() {
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
           </Button>
         )}
-      </div>
-
-      <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
-        <button
-          onClick={() => handleStatusChange("")}
-          className={
-            "rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
-            (status === ""
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground")
-          }
-        >
-          All {statusSummary ? `(${totalCount})` : ""}
-        </button>
-        {(statusSummary ?? []).map((s) => (
-          <button
-            key={s.status}
-            onClick={() => handleStatusChange(s.status)}
-            className={
-              "rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
-              (status === s.status
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground")
-            }
-          >
-            {s.label} ({s.count})
-          </button>
-        ))}
       </div>
 
       {error ? (
@@ -292,7 +288,7 @@ export default function OrdersList() {
               <div className="animate-indeterminate h-full w-1/3 bg-primary" />
             </div>
           )}
-          <Table className="min-w-[1100px] table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
+          <Table className="min-w-[1200px] table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {table.getHeaderGroups()[0].headers.map((header) => (
@@ -334,7 +330,7 @@ export default function OrdersList() {
                       <TableCell className="py-1 font-mono text-xs">
                         <Link
                           to={`/orders/${row.id}`}
-                          state={{ orderIds: rows.map((r) => r.id) }}
+                          state={{ orderIds: rows.map((r) => r.id), from: location.pathname + location.search, search }}
                           className={row.status === "cancelled" ? "hover:underline" + strike : "text-primary hover:underline"}
                           title={row.external_order_id}
                         >
@@ -349,6 +345,9 @@ export default function OrdersList() {
                       <TableCell className={"truncate py-1 text-xs" + strike} title={row.customer_name || undefined}>{row.customer_name || "—"}</TableCell>
                       <TableCell className={"py-1 text-right font-mono text-xs tabular-nums" + strike}>
                         {Number(row.total_amount ?? 0).toLocaleString("en-IN")}
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <StatusBadge tone={orderTone(row.status)} className="status-chip--compact">{row.status}</StatusBadge>
                       </TableCell>
                       <TableCell className="py-1">
                         {row.payment_status ? (

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Popover } from "@base-ui/react/popover";
-import { ArrowDown, ArrowUp, ArrowUpDown, ListFilter } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ListFilter } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button.jsx";
+import { DATE_PRESETS, dateRangeLabel, parseCustomRange } from "../lib/dateRange.js";
 import { Textarea } from "@/components/ui/textarea.jsx";
 import {
   DropdownMenu,
@@ -84,12 +85,86 @@ function IdListFilter({ column, title }) {
   );
 }
 
+// Date column filter: preset ranges, or a custom From/To (either may be left open).
+function DateRangeFilter({ column, title }) {
+  const value = column.getFilterValue() ?? "";
+  const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const invalid = from && to && from > to;
+
+  const apply = (next) => {
+    column.setFilterValue(next || undefined);
+    setOpen(false);
+  };
+
+  return (
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          const custom = parseCustomRange(value);
+          setFrom(custom.from);
+          setTo(custom.to);
+        }
+      }}
+    >
+      <Popover.Trigger className="rounded p-0.5 hover:bg-muted" aria-label={`Filter ${title} by date range`} title={value ? dateRangeLabel(value) : undefined}>
+        <CalendarRange className={cn("size-3", value ? "text-primary" : "text-muted-foreground/50")} />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner align="start" sideOffset={6} className="z-50">
+          <Popover.Popup className="w-64 rounded-lg bg-popover p-2 text-popover-foreground shadow-md ring-1 ring-foreground/10">
+            <div className="space-y-0.5">
+              {DATE_PRESETS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => apply(p.value)}
+                  className={cn(
+                    "flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted",
+                    value === p.value && "bg-muted font-medium"
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 space-y-2 border-t border-border px-2 pt-2.5">
+              <p className="text-xs font-medium text-muted-foreground">Custom range</p>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                From
+                <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className="rounded-md border border-input bg-transparent px-2 py-1 text-sm" />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                To
+                <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="rounded-md border border-input bg-transparent px-2 py-1 text-sm" />
+              </label>
+              {invalid && <p className="text-xs text-destructive">The end date is before the start date.</p>}
+              <div className="flex items-center justify-between pb-1">
+                <Button size="xs" variant="ghost" onClick={() => apply(undefined)}>
+                  Clear
+                </Button>
+                <Button size="xs" disabled={(!from && !to) || invalid} onClick={() => apply(`${from}..${to}`)}>
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 // Header cell for a TanStack column: click to sort, and (when the column
 // defines `meta.filterOptions`) a menu to filter. Both are server-side.
 export function ColumnHeader({ column, title, align = "left" }) {
   const sortable = column.getCanSort();
   const options = column.columnDef.meta?.filterOptions;
   const isIdList = column.columnDef.meta?.filterIds;
+  const isDateRange = column.columnDef.meta?.filterDateRange;
   const sorted = column.getIsSorted();
   const filter = column.getFilterValue() ?? "";
   const SortIcon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
@@ -110,6 +185,7 @@ export function ColumnHeader({ column, title, align = "left" }) {
         title
       )}
       {isIdList && <IdListFilter column={column} title={title} />}
+      {isDateRange && <DateRangeFilter column={column} title={title} />}
       {options && (
         <DropdownMenu>
           <DropdownMenuTrigger

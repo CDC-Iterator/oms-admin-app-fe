@@ -302,7 +302,8 @@ export default function ProductsList() {
   const canManageMappings = user?.role === "admin";
 
   const [tab, setTab] = useState("all");
-  const [search, setSearch] = useState("");
+  // A dashboard link can open this screen with ?search= already filled in.
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
   const debouncedSearch = useDebounced(search, 300);
 
   // Page lives in the URL (?page=), not component state — a refresh (or a

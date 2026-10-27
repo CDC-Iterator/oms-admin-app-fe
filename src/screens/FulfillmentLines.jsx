@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PackageCheck, Truck } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
@@ -19,11 +19,18 @@ import { useGetInventoryLocationSummaryQuery } from "../api/services/inventory.j
 import { useBookFulfillmentLinesMutation, useGetFulfillmentLinesQuery } from "../api/services/orders.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { canBookShipments } from "../lib/permissions.js";
+import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
+import SavedViews from "../components/SavedViews.jsx";
+import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
 
 const PAGE_SIZE = 50;
+
+// Row total for a saved view's tab: a one-row page, only its `count` is read.
+const useViewCount = (params) =>
+  useGetFulfillmentLinesQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
 // Column widths live on a <colgroup> so the table keeps its layout when the action bar replaces the header.
 const COLUMN_WIDTHS = [3, 22, 8, 10, 9, 3, 10, 11, 10, 7, 7];
 const COURIERS = [
@@ -34,7 +41,7 @@ const COURIERS = [
 const COLUMNS = [
   { id: "item_code", header: "Item" },
   { id: "order", header: "Order", meta: { filterIds: true, filterParam: "order_ids" } },
-  { id: "placed_at", header: "Date" },
+  { id: "placed_at", header: "Date", meta: { filterDateRange: true, filterParam: "placed" } },
 ];
 
 // The warehouse(s) this line's confirmed unit actually sits in — the order's own allocated location is one value
@@ -53,7 +60,8 @@ function useDebounced(value, delayMs) {
 
 // Every order line that still has to go out and already has a unit confirmed — a flat pick list, not one row per order.
 export default function FulfillmentLines() {
-  const [search, setSearch] = useState("");
+  const location = useLocation();
+  const [search, setSearch] = useState(location.state?.search ?? "");
   const debouncedSearch = useDebounced(search, 300);
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
@@ -76,6 +84,7 @@ export default function FulfillmentLines() {
     columns,
     defaultOrdering: "-placed_at",
   });
+  const savedView = useSavedViewParams({ search, setSearch });
 
   const updateParams = (updates) =>
     setSearchParams(
@@ -95,6 +104,8 @@ export default function FulfillmentLines() {
     page,
     search: debouncedSearch || undefined,
     ...filterParams,
+    invoice: searchParams.get("invoice") || undefined,
+    waiting_hours: searchParams.get("waiting_hours") || undefined,
     ordering: orderingParam,
   });
   const rows = data?.rows ?? [];
@@ -159,6 +170,8 @@ export default function FulfillmentLines() {
           }}
           className="min-w-48 flex-1"
         />
+        <ViewFilterChips table={table} keys={["invoice", "waiting_hours"]} />
+        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter
@@ -269,7 +282,7 @@ export default function FulfillmentLines() {
                     <LineProduct line={row} layout="card" dense />
                   </TableCell>
                   <TableCell className="font-mono">
-                    <Link to={`/orders/${row.order_id}`} className="text-primary hover:underline" title={row.customer_name}>
+                    <Link to={`/orders/${row.order_id}`} state={{ from: location.pathname + location.search, search }} className="text-primary hover:underline" title={row.customer_name}>
                       {row.order_name}
                     </Link>
                   </TableCell>
