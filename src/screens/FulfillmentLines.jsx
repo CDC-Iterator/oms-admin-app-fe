@@ -20,6 +20,8 @@ import { useBookFulfillmentLinesMutation, useGetFulfillmentLinesQuery } from "..
 import { useAuth } from "../hooks/useAuth.js";
 import { canBookShipments } from "../lib/permissions.js";
 import { useServerColumns } from "../hooks/useServerColumns.js";
+import SavedViews from "../components/SavedViews.jsx";
+import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
 
@@ -76,6 +78,7 @@ export default function FulfillmentLines() {
     columns,
     defaultOrdering: "-placed_at",
   });
+  const savedView = useSavedViewParams({ search, setSearch });
 
   const updateParams = (updates) =>
     setSearchParams(
@@ -159,6 +162,7 @@ export default function FulfillmentLines() {
           }}
           className="min-w-48 flex-1"
         />
+        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter

@@ -26,6 +26,8 @@ import {
   useGetInventoryUnitsQuery,
 } from "../api/services/inventory.js";
 import { useServerColumns } from "../hooks/useServerColumns.js";
+import SavedViews from "../components/SavedViews.jsx";
+import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { formatApiError } from "../lib/errors.js";
 import { stockLevel } from "../lib/status.js";
 
@@ -267,6 +269,7 @@ export default function InventoryList() {
     columns: COLUMNS,
     defaultOrdering: "item_code",
   });
+  const savedView = useSavedViewParams({ search, setSearch });
   const { data, isFetching, error, refetch } = useGetInventoryLedgerQuery({
     page,
     search: searchParam,
@@ -302,6 +305,7 @@ export default function InventoryList() {
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full"
         />
+        <SavedViews resource="inventory" params={savedView.params} onApply={savedView.apply} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter

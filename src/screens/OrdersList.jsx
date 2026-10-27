@@ -18,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
 import { useServerColumns } from "../hooks/useServerColumns.js";
+import SavedViews from "../components/SavedViews.jsx";
+import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import { formatApiError } from "../lib/errors.js";
 import { formatPlacedDate } from "../lib/utils.js";
@@ -186,6 +188,7 @@ export default function OrdersList() {
     columns: COLUMNS,
     defaultOrdering: DEFAULT_ORDERING,
   });
+  const savedView = useSavedViewParams({ search, setSearch });
 
   const searchParam = debouncedSearch || undefined;
   const { data, isFetching, error, refetch } = useGetOrdersQuery({
@@ -222,6 +225,7 @@ export default function OrdersList() {
             />
           )}
         </div>
+        <SavedViews resource="orders" params={savedView.params} onApply={savedView.apply} />
         {activeFilters > 0 && (
           <Button
             size="sm"

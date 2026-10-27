@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetActivityQuery } from "../api/services/activity.js";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
+import SavedViews from "../components/SavedViews.jsx";
+import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import { formatApiError } from "../lib/errors.js";
 import { syncTone } from "../lib/status.js";
@@ -142,6 +144,7 @@ export default function ActivityLog() {
     columns: COLUMNS,
     defaultOrdering: DEFAULT_ORDERING,
   });
+  const savedView = useSavedViewParams({ search, setSearch });
   const { data, isFetching, error, refetch } = useGetActivityQuery({
     page,
     ordering: orderingParam,
@@ -172,6 +175,7 @@ export default function ActivityLog() {
             />
           )}
         </div>
+        <SavedViews resource="activity" params={savedView.params} onApply={savedView.apply} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
