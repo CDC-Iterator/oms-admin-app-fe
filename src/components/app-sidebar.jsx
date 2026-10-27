@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart3,
   Boxes,
+  ScanBarcode,
   PackageCheck,
   LayoutDashboard,
   LogOut,
@@ -43,6 +44,7 @@ const NAV_ITEMS = [
 const CATALOG_ITEMS = [
   { title: "Product Master", url: "/catalog/products", icon: Tags },
   { title: "Inventory", url: "/catalog/inventory", icon: Boxes },
+  { title: "Barcodes", url: "/catalog/barcodes", icon: ScanBarcode },
   {
     title: "Channel Products",
     url: "/catalog/channel-products",

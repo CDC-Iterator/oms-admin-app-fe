@@ -13,6 +13,7 @@ const PAGE_TITLES = {
   "/reports": "Reports",
   "/catalog/products": "Product Master",
   "/catalog/inventory": "Inventory",
+  "/catalog/barcodes": "Barcodes",
   "/catalog/channel-products": "Channel Products",
   "/catalog/unmapped": "Unmapped SKUs",
   "/settings/locations": "Locations",

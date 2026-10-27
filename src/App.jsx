@@ -7,6 +7,7 @@ import PublicLayout from "./layouts/PublicLayout.jsx";
 import { AuthProvider } from "./providers/AuthProvider.jsx";
 import { canOpenPath } from "./lib/permissions.js";
 import { ToastProvider } from "./providers/ToastProvider.jsx";
+import Barcodes from "./screens/Barcodes.jsx";
 import ActivityLog from "./screens/ActivityLog.jsx";
 import ChannelProducts from "./screens/ChannelProducts.jsx";
 import ChannelsList from "./screens/ChannelsList.jsx";
@@ -54,6 +55,7 @@ function AppRoutes() {
           <Route path="/orders/:id" element={<OrderDetail />} />
           <Route path="/catalog/products" element={<ProductsList />} />
           <Route path="/catalog/inventory" element={<InventoryList />} />
+          <Route path="/catalog/barcodes" element={<Barcodes />} />
           <Route
             path="/catalog/channel-products"
             element={<ChannelProducts />}
