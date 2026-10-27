@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -31,7 +40,8 @@ export default function SavedViews({ resource, params, onApply }) {
   const admin = isAdminUser(user);
   const { data: views = [] } = useGetSavedViewsQuery(resource);
   const [createView, { isLoading: saving }] = useCreateSavedViewMutation();
-  const [deleteView] = useDeleteSavedViewMutation();
+  const [deleteView, { isLoading: deleting }] = useDeleteSavedViewMutation();
+  const [toDelete, setToDelete] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [shared, setShared] = useState(false);
@@ -61,26 +71,33 @@ export default function SavedViews({ resource, params, onApply }) {
     }
   };
 
-  const remove = async (view) => {
+  const confirmDelete = async () => {
+    const view = toDelete;
     try {
       await deleteView(view.id).unwrap();
       showToast(`View “${view.name}” deleted.`);
     } catch (err) {
       showToast(formatApiError(err));
     }
+    setToDelete(null);
   };
 
+  // Same underlined tabs as the Reports and status tabs.
   const tab = (selected) =>
-    "flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors " +
-    (selected
-      ? "border-primary bg-primary/10 text-foreground"
-      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground");
+    "rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors " +
+    (selected ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground");
 
   const renderView = (view) => {
     const selected = active?.id === view.id;
     return (
-      <div key={view.id} role="presentation" className={tab(selected) + " pr-1.5"}>
-        <button type="button" role="tab" aria-selected={selected} onClick={() => onApply(view.params)} title={view.is_owner ? undefined : `Shared by ${view.owner}`}>
+      <div key={view.id} role="presentation" className={"group flex items-center " + tab(selected)}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={selected}
+          onClick={() => onApply(view.params)}
+          title={view.is_owner ? undefined : `Shared by ${view.owner}`}
+        >
           {view.name}
           {!view.is_owner && <span className="ml-1 text-[10px] opacity-60">shared</span>}
         </button>
@@ -88,8 +105,11 @@ export default function SavedViews({ resource, params, onApply }) {
           <button
             type="button"
             aria-label={`Delete ${view.name}`}
-            className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
-            onClick={() => remove(view)}
+            className={
+              "ml-1.5 rounded p-0.5 text-muted-foreground hover:text-destructive focus:opacity-100 " +
+              (selected ? "" : "opacity-0 group-hover:opacity-100")
+            }
+            onClick={() => setToDelete(view)}
           >
             <X className="size-3" />
           </button>
@@ -100,19 +120,42 @@ export default function SavedViews({ resource, params, onApply }) {
 
   return (
     <div className="order-last w-full min-w-0">
-      <div role="tablist" aria-label="Saved views" className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
+      <div
+        role="tablist"
+        aria-label="Saved views"
+        className="flex items-center gap-1 overflow-x-auto border-b border-border pb-px [scrollbar-width:thin]"
+      >
         <button type="button" role="tab" aria-selected={!active && !hasFilters} onClick={() => onApply({})} className={tab(!active && !hasFilters)}>
           All
         </button>
         {mine.map(renderView)}
         {teamViews.map(renderView)}
         {hasFilters && !active && (
-          <button type="button" onClick={openSave} className={tab(false) + " border-dashed"}>
-            <Plus className="size-3" />
+          <button type="button" onClick={openSave} className={tab(false) + " flex items-center gap-1"}>
+            <Plus className="size-3.5" />
             Save view
           </button>
         )}
       </div>
+
+      <AlertDialog open={Boolean(toDelete)} onOpenChange={(open) => !open && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete “{toDelete?.name}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete?.is_shared
+                ? "This view is shared, so it disappears for everyone who uses it. This can't be undone."
+                : "This saved view will be removed. This can't be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? "Deleting…" : "Delete view"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
