@@ -116,7 +116,7 @@ export function AppSidebar({ ...props }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <NavItems items={NAV_ITEMS} pathname={location.pathname} />
+              <NavItems items={opsOnly ? NAV_ITEMS.filter((i) => i.url !== "/reports") : NAV_ITEMS} pathname={location.pathname} />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
