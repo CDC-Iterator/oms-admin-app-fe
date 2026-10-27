@@ -182,6 +182,7 @@ export default function ActivityLog() {
             />
           )}
         </div>
+        <ViewFilterChips table={table} keys={["topic", "since_hours"]} />
         <SavedViews resource="activity" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
@@ -189,8 +190,6 @@ export default function ActivityLog() {
           </Button>
         )}
       </div>
-
-      <ViewFilterChips keys={["topic", "since_hours"]} />
 
       {error ? (
         <EmptyState

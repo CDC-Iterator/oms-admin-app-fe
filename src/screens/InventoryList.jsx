@@ -25,6 +25,7 @@ import {
   useGetInventoryLocationSummaryQuery,
   useGetInventoryUnitsQuery,
 } from "../api/services/inventory.js";
+import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import SavedViews from "../components/SavedViews.jsx";
 import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
@@ -45,7 +46,7 @@ const COLUMNS = [
   { id: "committed", header: "Committed" },
   { id: "available", header: "Available" },
   { id: "on_hand", header: "On hand" },
-  { id: "level", enableSorting: false, meta: { filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
+  { id: "level", enableSorting: false, meta: { label: "Level", filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
 ];
 
 // InventoryUnit.Status choices — apps.inventory.models.
@@ -312,6 +313,7 @@ export default function InventoryList() {
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full"
         />
+        <ViewFilterChips table={table} />
         <SavedViews resource="inventory" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>

@@ -170,6 +170,7 @@ export default function FulfillmentLines() {
           }}
           className="min-w-48 flex-1"
         />
+        <ViewFilterChips table={table} keys={["invoice", "waiting_hours"]} />
         <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
@@ -177,8 +178,6 @@ export default function FulfillmentLines() {
           </Button>
         )}
       </div>
-
-      <ViewFilterChips keys={["placed", "invoice", "waiting_hours"]} />
 
       {error ? (
         <Alert variant="destructive">

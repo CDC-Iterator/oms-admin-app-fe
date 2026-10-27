@@ -3,9 +3,8 @@ import { useSearchParams } from "react-router-dom";
 
 import { dateRangeLabel } from "../lib/dateRange.js";
 
-// Filters that arrive from a dashboard card or a saved view and have no column header; each chip clears one.
+// Filters that arrive from a dashboard card or a saved view and have no column header.
 const LABELS = {
-  placed: (v) => `Date: ${dateRangeLabel(v)}`,
   created: (v) => (v === "today" ? "Created today" : `Created ${v}`),
   waiting_hours: (v) => `Waiting over ${v}h`,
   since_hours: (v) => `Last ${v}h`,
@@ -19,14 +18,42 @@ const LABELS = {
 
 export const VIEW_ONLY_FILTERS = Object.keys(LABELS);
 
-export default function ViewFilterChips({ keys = VIEW_ONLY_FILTERS }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const active = keys.filter((key) => searchParams.get(key));
-  // A multi-status list (pending,confirmed) can't be shown by the single-choice column filter.
-  const statusList = searchParams.get("status")?.includes(",") ? searchParams.get("status") : null;
-  if (active.length === 0 && !statusList) return null;
+const titleCase = (text) => text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, " ");
 
-  const clear = (key) =>
+// One pill for the column filter, e.g. "Channel: Shopify", "Date: Last 7 days", "Order: 12 ids".
+function columnPill(column, value) {
+  const meta = column.columnDef.meta ?? {};
+  const header = column.columnDef.header;
+  const name = meta.label ?? (typeof header === "string" && header ? header : titleCase(column.id));
+  let shown = String(value);
+  if (meta.filterDateRange) shown = dateRangeLabel(value);
+  else if (meta.filterIds) {
+    const count = String(value).split(",").filter(Boolean).length;
+    shown = `${count} id${count === 1 ? "" : "s"}`;
+  } else if (meta.filterOptions) {
+    // A link can carry several values (status=pending,confirmed); label each one.
+    const labelFor = (v) => meta.filterOptions.find((o) => String(o.value) === v)?.label ?? v;
+    shown = String(value).split(",").map(labelFor).join(", ");
+  }
+  return { key: `col:${column.id}`, label: `${name}: ${shown}`, clear: () => column.setFilterValue(undefined) };
+}
+
+/**
+ * A pill for every applied filter — the table's column filters plus the dashboard/saved-view ones —
+ * each with an ✕ to clear it. Sits above the saved-view tabs.
+ */
+export default function ViewFilterChips({ table, keys = [], className = "order-last w-full" }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const columnFilters = table ? table.getState().columnFilters : [];
+  const pills = columnFilters
+    .map((f) => ({ f, column: table.getColumn(f.id) }))
+    .filter(({ column }) => column)
+    .map(({ f, column }) => columnPill(column, f.value));
+
+  // Param-based pills, skipping any param a column filter already covers.
+  const covered = new Set(table ? table.getAllColumns().map((c) => c.columnDef.meta?.filterParam).filter(Boolean) : []);
+  const clearParam = (key) =>
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -36,20 +63,22 @@ export default function ViewFilterChips({ keys = VIEW_ONLY_FILTERS }) {
       },
       { replace: true }
     );
+  for (const key of keys) {
+    const value = searchParams.get(key);
+    if (value && !covered.has(key)) pills.push({ key, label: LABELS[key]?.(value) ?? `${titleCase(key)}: ${value}`, clear: () => clearParam(key) });
+  }
 
-  const chip = (key, label) => (
-    <span key={key} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
-      {label}
-      <button type="button" aria-label={`Remove ${label}`} className="rounded-full p-0.5 text-muted-foreground hover:text-foreground" onClick={() => clear(key)}>
-        <X className="size-3" />
-      </button>
-    </span>
-  );
-
+  if (pills.length === 0) return null;
   return (
-    <div className="mb-3 flex shrink-0 flex-wrap items-center gap-1.5">
-      {statusList && chip("status", `Status: ${statusList.split(",").join(", ")}`)}
-      {active.map((key) => chip(key, LABELS[key](searchParams.get(key))))}
+    <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+      {pills.map((pill) => (
+        <span key={pill.key} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+          {pill.label}
+          <button type="button" aria-label={`Remove ${pill.label}`} className="rounded-full p-0.5 text-muted-foreground hover:text-foreground" onClick={pill.clear}>
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
     </div>
   );
 }

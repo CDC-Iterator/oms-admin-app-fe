@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery } from "../api/services/orders.js";
-import ViewFilterChips from "../components/ViewFilterChips.jsx";
+import ViewFilterChips, { VIEW_ONLY_FILTERS } from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import SavedViews from "../components/SavedViews.jsx";
 import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
@@ -244,6 +244,7 @@ export default function OrdersList() {
             />
           )}
         </div>
+        <ViewFilterChips table={table} keys={VIEW_ONLY_FILTERS} />
         <SavedViews resource="orders" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
         {activeFilters > 0 && (
           <Button
@@ -255,8 +256,6 @@ export default function OrdersList() {
           </Button>
         )}
       </div>
-
-      <ViewFilterChips />
 
       {error ? (
         <EmptyState
