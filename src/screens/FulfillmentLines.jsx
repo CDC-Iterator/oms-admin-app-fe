@@ -32,7 +32,22 @@ const PAGE_SIZE = 50;
 const useViewCount = (params) =>
   useGetFulfillmentLinesQuery({ ...params, page: 1, page_size: 1 }, { selectFromResult: ({ data }) => ({ count: data?.count }) }).count;
 // Column widths live on a <colgroup> so the table keeps its layout when the action bar replaces the header.
-const COLUMN_WIDTHS = [3, 22, 8, 10, 9, 3, 10, 11, 10, 7, 7];
+const COLUMN_WIDTHS = [3, 19, 8, 8, 9, 3, 8, 12, 8, 9, 7, 6];
+// LineFulfillment.Stage — apps.orders.models. `all` (the "All" tab) turns the stage filter off.
+const STAGES = [
+  { value: "ready_to_ship", label: "Ready to ship" },
+  { value: "dispatched", label: "Dispatched" },
+  { value: "in_transit", label: "In transit" },
+  { value: "delivered", label: "Delivered" },
+  { value: "rto", label: "RTO" },
+  { value: "awaiting_unit", label: "Awaiting unit" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "vendor", label: "Vendor fulfilled" },
+  { value: "untracked", label: "Shipped, no tracking" },
+];
+const STAGE_TONE = { ready_to_ship: "pending", dispatched: "info", in_transit: "info", delivered: "success", rto: "danger" };
+const ALL_PARAMS = { stage: "all" };
+const READY = "ready_to_ship";
 const COURIERS = [
   { value: "shipway", label: "Shipway" },
   { value: "shipdelight", label: "Shipdelight" },
@@ -42,6 +57,7 @@ const COLUMNS = [
   { id: "item_code", header: "Item" },
   { id: "order", header: "Order", meta: { filterIds: true, filterParam: "order_ids" } },
   { id: "placed_at", header: "Date", meta: { filterDateRange: true, filterParam: "placed" } },
+  { id: "stage", header: "Stage", enableSorting: false, meta: { filterOptions: STAGES, filterParam: "stage" } },
 ];
 
 // The warehouse(s) this line's confirmed unit actually sits in — the order's own allocated location is one value
@@ -85,6 +101,7 @@ export default function FulfillmentLines() {
     defaultOrdering: "-placed_at",
   });
   const savedView = useSavedViewParams({ search, setSearch });
+  const stage = searchParams.get("stage");
 
   const updateParams = (updates) =>
     setSearchParams(
@@ -99,11 +116,17 @@ export default function FulfillmentLines() {
       { replace: true }
     );
   const setPage = (nextPage) => updateParams({ page: nextPage <= 1 ? null : nextPage });
+  // The screen opens on Ready to ship (the daily pick list); the stage lives in the URL like any other filter.
+  useEffect(() => {
+    if (!stage) updateParams({ stage: READY });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
 
   const { data, isFetching, error, refetch } = useGetFulfillmentLinesQuery({
     page,
     search: debouncedSearch || undefined,
     ...filterParams,
+    stage: stage || READY,
     invoice: searchParams.get("invoice") || undefined,
     waiting_hours: searchParams.get("waiting_hours") || undefined,
     ordering: orderingParam,
@@ -120,11 +143,12 @@ export default function FulfillmentLines() {
       else next.set(row.line_id, row);
       return next;
     });
-  const pageSelected = rows.length > 0 && rows.every((r) => selected.has(r.line_id));
+  const selectable = rows.filter((r) => r.stage === READY);
+  const pageSelected = selectable.length > 0 && selectable.every((r) => selected.has(r.line_id));
   const togglePage = () =>
     setSelected((prev) => {
       const next = new Map(prev);
-      for (const r of rows) {
+      for (const r of selectable) {
         if (pageSelected) next.delete(r.line_id);
         else next.set(r.line_id, r);
       }
@@ -156,8 +180,8 @@ export default function FulfillmentLines() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <p className="mb-4 shrink-0 text-sm text-muted-foreground">
-        Order lines still to fulfil that already have a confirmed unit
-        {data ? ` — ${data.count} line${data.count === 1 ? "" : "s"}` : ""}.
+        Every order line by fulfilment stage — pick a tab, or filter the Stage column
+        {data ? ` · ${data.count.toLocaleString("en-IN")} line${data.count === 1 ? "" : "s"}` : ""}.
       </p>
 
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
@@ -171,7 +195,7 @@ export default function FulfillmentLines() {
           className="min-w-48 flex-1"
         />
         <ViewFilterChips table={table} keys={["invoice", "waiting_hours"]} />
-        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} />
+        <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.apply} useCount={useViewCount} allParams={ALL_PARAMS} />
         {activeFilters > 0 && (
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filter
@@ -193,8 +217,8 @@ export default function FulfillmentLines() {
       ) : rows.length === 0 && activeFilters === 0 ? (
         <EmptyState
           icon={PackageCheck}
-          title="Nothing to fulfil"
-          description="Lines show up here once they have a confirmed unit and haven't shipped yet."
+          title="No lines here"
+          description="Nothing is at this stage right now."
         />
       ) : (
         <div
@@ -219,7 +243,7 @@ export default function FulfillmentLines() {
                       aria-label="Clear selection"
                     />
                   </TableHead>
-                  <TableHead colSpan={10} className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
+                  <TableHead colSpan={11} className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium">{selected.size} selected</span>
                       {canBook && (
@@ -255,28 +279,33 @@ export default function FulfillmentLines() {
                 <TableHead className="w-[9%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
-                <TableHead className="w-[3%] shadow-[inset_0_-1px_0_0_var(--border)] text-center">Qty</TableHead>
-                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Barcode</TableHead>
-                <TableHead className="w-[11%] shadow-[inset_0_-1px_0_0_var(--border)]">
-                  <ColumnHeader column={table.getColumn("allocated_location")} title="Allocated location" />
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">Qty</TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                  <ColumnHeader column={table.getColumn("stage")} title="Stage" />
                 </TableHead>
-                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Customer</TableHead>
-                <TableHead className="w-[7%] shadow-[inset_0_-1px_0_0_var(--border)]">Delivery</TableHead>
-                <TableHead className="w-[7%] shadow-[inset_0_-1px_0_0_var(--border)]">Destination</TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Courier / AWB</TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Barcode</TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                  <ColumnHeader column={table.getColumn("allocated_location")} title="Location" />
+                </TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Customer</TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Destination</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
-              {rows.length === 0 && <TableEmptyRow colSpan={11} />}
+              {rows.length === 0 && <TableEmptyRow colSpan={12} />}
               {rows.map((row) => (
-                <TableRow key={row.line_id} data-state={selected.has(row.line_id) ? "selected" : undefined}>
+                <TableRow key={row.row_id ?? row.line_id} data-state={selected.has(row.line_id) ? "selected" : undefined}>
                   <TableCell>
-                    <input
-                      type="checkbox"
-                      className="oms-checkbox mx-auto"
-                      checked={selected.has(row.line_id)}
-                      onChange={() => toggle(row)}
-                      aria-label={`Select ${row.order_name} ${row.external_sku}`}
-                    />
+                    {row.stage === READY && (
+                      <input
+                        type="checkbox"
+                        className="oms-checkbox mx-auto"
+                        checked={selected.has(row.line_id)}
+                        onChange={() => toggle(row)}
+                        aria-label={`Select ${row.order_name} ${row.external_sku}`}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     <LineProduct line={row} layout="card" dense />
@@ -292,6 +321,28 @@ export default function FulfillmentLines() {
                   <TableCell className="truncate">{formatPlacedDate(row.placed_at)}</TableCell>
                   <TableCell className="text-center font-mono tabular-nums">{row.qty}</TableCell>
                   <TableCell>
+                    <StatusBadge tone={STAGE_TONE[row.stage] ?? "neutral"} className="status-chip--compact">
+                      {row.stage_label}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell className="truncate" title={[row.carrier, row.tracking_number, row.shipment_status].filter(Boolean).join(" · ") || undefined}>
+                    {row.carrier || row.tracking_number ? (
+                      <div className="leading-tight">
+                        <div className="truncate">{row.carrier || "—"}</div>
+                        {row.tracking_number &&
+                          (row.tracking_url ? (
+                            <a href={row.tracking_url} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-primary hover:underline">
+                              {row.tracking_number}
+                            </a>
+                          ) : (
+                            <span className="font-mono text-[11px] text-muted-foreground">{row.tracking_number}</span>
+                          ))}
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {row.units.map((u) => (
                         <StatusBadge key={u.barcode} tone="success" className="status-chip--compact">
@@ -306,14 +357,14 @@ export default function FulfillmentLines() {
                   <TableCell className="truncate" title={row.customer_name || undefined}>
                     {row.customer_name || "—"}
                   </TableCell>
-                  <TableCell className="truncate" title={row.delivery_method || undefined}>
-                    {row.delivery_method || "—"}
-                  </TableCell>
                   <TableCell
                     className="truncate"
-                    title={[row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ") || undefined}
+                    title={[row.shipping_city, row.shipping_pincode, row.delivery_method].filter(Boolean).join(" · ") || undefined}
                   >
-                    {[row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ") || "—"}
+                    <div className="leading-tight">
+                      <div className="truncate">{[row.shipping_city, row.shipping_pincode].filter(Boolean).join(" · ") || "—"}</div>
+                      {row.delivery_method && <div className="truncate text-[11px] text-muted-foreground">{row.delivery_method}</div>}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
