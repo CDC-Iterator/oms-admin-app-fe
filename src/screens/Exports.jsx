@@ -145,7 +145,7 @@ export default function Exports() {
             <TableBody className={loading ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
               {rows.length === 0 && <TableEmptyRow colSpan={COLUMNS.length} />}
               {rows.map((job) => {
-                const summary = exportParamsSummary(job.params);
+                const summary = job.title || exportParamsSummary(job.params);
                 return (
                   <TableRow key={job.id}>
                     <TableCell className="truncate py-1 font-mono text-xs" title={job.filename || undefined}>

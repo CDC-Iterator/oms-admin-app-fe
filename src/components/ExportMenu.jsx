@@ -15,9 +15,9 @@ const RECENT = 10;
 
 /**
  * "Export CSV" for a list screen: queues a background export of what the screen currently shows
- * (`params` = its filters, search and ordering), and lists recent exports with their status and a download.
+ * (`params` = its filters, search and ordering; or a full request `body`), and lists recent exports with their status and a download.
  */
-export default function ExportMenu({ resource, params }) {
+export default function ExportMenu({ resource, params, body, disabled = false }) {
   const { showToast } = useToast();
   const [polling, setPolling] = useState(false);
   const { data, isError } = useGetExportsQuery({ resource, page_size: RECENT }, { pollingInterval: polling ? EXPORT_POLL_MS : 0 });
@@ -30,7 +30,7 @@ export default function ExportMenu({ resource, params }) {
 
   const start = async () => {
     try {
-      await createExport({ resource, params }).unwrap();
+      await createExport(body ?? { resource, params }).unwrap();
       showToast("Export started — it will show under Exports when it's ready.");
     } catch (err) {
       showToast(formatApiError(err));
@@ -39,7 +39,7 @@ export default function ExportMenu({ resource, params }) {
 
   return (
     <div className="flex items-center gap-1">
-      <Button variant="outline" onClick={start} disabled={starting}>
+      <Button variant="outline" onClick={start} disabled={starting || disabled}>
         {starting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
         Export CSV
       </Button>
