@@ -1,17 +1,8 @@
 import { useState } from "react";
-import { Bookmark, Check, Trash2 } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button.jsx";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog.jsx";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import {
@@ -30,7 +21,7 @@ const sameParams = (a, b) => {
 };
 
 /**
- * "Views" menu for a list screen: pick a saved filter set, or save the current one.
+ * Scrollable saved-view tabs for a list screen: pick a saved filter set, or save the current one.
  * `resource` is the saved-view resource key (orders | fulfillments | inventory | activity);
  * `params` the screen's current filters and `onApply(params)` restores a saved set.
  */
@@ -79,55 +70,49 @@ export default function SavedViews({ resource, params, onApply }) {
     }
   };
 
-  const renderView = (view) => (
-    <DropdownMenuItem key={view.id} onClick={() => onApply(view.params)} className="justify-between gap-3">
-      <span className="flex min-w-0 items-center gap-1.5">
-        {active?.id === view.id ? <Check className="size-3.5 shrink-0" /> : <span className="size-3.5 shrink-0" />}
-        <span className="truncate">{view.name}</span>
-      </span>
-      {(view.is_owner || admin) && (
-        <button
-          type="button"
-          aria-label={`Delete ${view.name}`}
-          className="rounded p-0.5 text-muted-foreground hover:text-destructive"
-          onClick={(e) => {
-            e.stopPropagation();
-            remove(view);
-          }}
-        >
-          <Trash2 className="size-3.5" />
+  const tab = (selected) =>
+    "flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors " +
+    (selected
+      ? "border-primary bg-primary/10 text-foreground"
+      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground");
+
+  const renderView = (view) => {
+    const selected = active?.id === view.id;
+    return (
+      <div key={view.id} role="presentation" className={tab(selected) + " pr-1.5"}>
+        <button type="button" role="tab" aria-selected={selected} onClick={() => onApply(view.params)} title={view.is_owner ? undefined : `Shared by ${view.owner}`}>
+          {view.name}
+          {!view.is_owner && <span className="ml-1 text-[10px] opacity-60">shared</span>}
         </button>
-      )}
-    </DropdownMenuItem>
-  );
+        {(view.is_owner || admin) && (
+          <button
+            type="button"
+            aria-label={`Delete ${view.name}`}
+            className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
+            onClick={() => remove(view)}
+          >
+            <X className="size-3" />
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
-          <Bookmark className="size-3.5" />
-          {active ? active.name : "Views"}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-56">
-          {mine.length > 0 && (
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>My views</DropdownMenuLabel>
-              {mine.map(renderView)}
-            </DropdownMenuGroup>
-          )}
-          {teamViews.length > 0 && (
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Shared</DropdownMenuLabel>
-              {teamViews.map(renderView)}
-            </DropdownMenuGroup>
-          )}
-          {views.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No saved views yet.</p>}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={!hasFilters} onClick={openSave}>
-            Save current view…
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="order-last w-full min-w-0">
+      <div role="tablist" aria-label="Saved views" className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
+        <button type="button" role="tab" aria-selected={!active && !hasFilters} onClick={() => onApply({})} className={tab(!active && !hasFilters)}>
+          All
+        </button>
+        {mine.map(renderView)}
+        {teamViews.map(renderView)}
+        {hasFilters && !active && (
+          <button type="button" onClick={openSave} className={tab(false) + " border-dashed"}>
+            <Plus className="size-3" />
+            Save view
+          </button>
+        )}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
@@ -156,6 +141,6 @@ export default function SavedViews({ resource, params, onApply }) {
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

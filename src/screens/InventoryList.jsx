@@ -298,7 +298,7 @@ export default function InventoryList() {
           : "Every SKU stocked at this location — the same ledger every channel's availability is pushed from."}
       </p>
 
-      <div className="mb-3 flex shrink-0 items-center gap-2">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Input
           placeholder="Search item code, location…"
           value={search}
