@@ -12,6 +12,9 @@ import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet.jsx";
+import JsonView from "@uiw/react-json-view";
+import { lightTheme } from "@uiw/react-json-view/light";
+
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
@@ -80,11 +83,24 @@ function DetailRow({ label, children }) {
   );
 }
 
-const prettyJson = (text) => {
+// Collapsible JSON tree (copy buttons on hover); the theme's own background is dropped so the box colour shows.
+const JSON_THEME = { ...lightTheme, "--w-rjv-background-color": "transparent", fontSize: 12, lineHeight: 1.6 };
+
+function JsonBlock({ value, className, collapsed = 2 }) {
+  return (
+    <div className={cn("overflow-auto rounded-md bg-muted p-3", className)}>
+      <JsonView value={value} collapsed={collapsed} displayDataTypes={false} enableClipboard shortenTextAfterLength={120} style={JSON_THEME} />
+    </div>
+  );
+}
+
+// POS replies are usually JSON; anything else (an HTML error page, plain text) stays as text.
+const parseJson = (text) => {
   try {
-    return JSON.stringify(JSON.parse(text), null, 2);
+    const value = JSON.parse(text);
+    return value && typeof value === "object" ? value : null;
   } catch {
-    return text;
+    return null;
   }
 };
 
@@ -105,15 +121,19 @@ function PosAttempts({ attempts }) {
           {a.request && (
             <div>
               <h4 className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">Request sent to POS</h4>
-              <pre className="max-h-72 overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">{JSON.stringify(a.request, null, 2)}</pre>
+              <JsonBlock value={a.request} collapsed={5} className="max-h-72" />
             </div>
           )}
           {(a.response || a.error) && (
             <div>
               <h4 className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">Response from POS</h4>
-              <pre className={cn("max-h-56 overflow-auto rounded-md p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap", a.outcome === "failed" ? "bg-destructive/10" : "bg-muted")}>
-                {a.response ? prettyJson(a.response) : a.error}
-              </pre>
+              {a.response && parseJson(a.response) ? (
+                <JsonBlock value={parseJson(a.response)} collapsed={5} className={cn("max-h-56", a.outcome === "failed" && "bg-destructive/10")} />
+              ) : (
+                <pre className={cn("max-h-56 overflow-auto rounded-md p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap", a.outcome === "failed" ? "bg-destructive/10" : "bg-muted")}>
+                  {a.response || a.error}
+                </pre>
+              )}
             </div>
           )}
         </section>
@@ -170,9 +190,11 @@ function ActivityDrawer({ row, onClose }) {
               )}
               <section>
                 <h3 className="mb-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">Payload</h3>
-                <pre className="max-h-[65vh] overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
-                  {Object.keys(row.payload ?? {}).length ? JSON.stringify(row.payload, null, 2) : "No payload recorded"}
-                </pre>
+                {Object.keys(row.payload ?? {}).length ? (
+                  <JsonBlock value={row.payload} className="max-h-[65vh]" />
+                ) : (
+                  <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">No payload recorded</p>
+                )}
               </section>
             </div>
           </>
