@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import {
   useCreateSavedViewMutation,
   useDeleteSavedViewMutation,
   useGetSavedViewsQuery,
+  useUpdateSavedViewMutation,
 } from "../api/services/savedViews.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
@@ -48,6 +49,10 @@ export default function SavedViews({ resource, params, onApply, useCount }) {
   const [createView, { isLoading: saving }] = useCreateSavedViewMutation();
   const [deleteView, { isLoading: deleting }] = useDeleteSavedViewMutation();
   const [toDelete, setToDelete] = useState(null);
+  const [updateView, { isLoading: renamingSaving }] = useUpdateSavedViewMutation();
+  const [toRename, setToRename] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [renameError, setRenameError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [shared, setShared] = useState(false);
@@ -74,6 +79,24 @@ export default function SavedViews({ resource, params, onApply, useCount }) {
       setDialogOpen(false);
     } catch (err) {
       setError(formatApiError(err));
+    }
+  };
+
+  const openRename = (view) => {
+    setToRename(view);
+    setNewName(view.name);
+    setRenameError(null);
+  };
+
+  const rename = async (event) => {
+    event.preventDefault();
+    setRenameError(null);
+    try {
+      await updateView({ id: toRename.id, name: newName }).unwrap();
+      showToast(`View renamed to “${newName.trim()}”.`);
+      setToRename(null);
+    } catch (err) {
+      setRenameError(formatApiError(err));
     }
   };
 
@@ -110,9 +133,22 @@ export default function SavedViews({ resource, params, onApply, useCount }) {
         {(view.is_owner || admin) && (
           <button
             type="button"
+            aria-label={`Rename ${view.name}`}
+            className={
+              "ml-1.5 rounded p-0.5 text-muted-foreground hover:text-foreground focus:opacity-100 " +
+              (selected ? "" : "opacity-0 group-hover:opacity-100")
+            }
+            onClick={() => openRename(view)}
+          >
+            <Pencil className="size-3" />
+          </button>
+        )}
+        {(view.is_owner || admin) && (
+          <button
+            type="button"
             aria-label={`Delete ${view.name}`}
             className={
-              "ml-1.5 rounded p-0.5 text-muted-foreground hover:text-destructive focus:opacity-100 " +
+              "ml-0.5 rounded p-0.5 text-muted-foreground hover:text-destructive focus:opacity-100 " +
               (selected ? "" : "opacity-0 group-hover:opacity-100")
             }
             onClick={() => setToDelete(view)}
@@ -144,6 +180,28 @@ export default function SavedViews({ resource, params, onApply, useCount }) {
           </button>
         )}
       </div>
+
+      <Dialog open={Boolean(toRename)} onOpenChange={(open) => !open && setToRename(null)}>
+        <DialogContent>
+          <form onSubmit={rename} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Rename view</DialogTitle>
+              <DialogDescription>Only the name changes; the saved filters stay as they are.</DialogDescription>
+            </DialogHeader>
+            {renameError && (
+              <Alert variant="destructive">
+                <AlertDescription>{renameError}</AlertDescription>
+              </Alert>
+            )}
+            <Input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} required maxLength={100} />
+            <DialogFooter>
+              <Button type="submit" disabled={renamingSaving || !newName.trim() || newName.trim() === toRename?.name}>
+                {renamingSaving ? "Saving…" : "Rename"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(open) => !open && setToDelete(null)}>
         <AlertDialogContent>

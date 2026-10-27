@@ -11,6 +11,10 @@ export const savedViewsApi = omsApi.injectEndpoints({
       query: (body) => ({ url: "/api/saved-views/", method: "POST", body }),
       invalidatesTags: ["savedViews"],
     }),
+    updateSavedView: builder.mutation({
+      query: ({ id, ...body }) => ({ url: `/api/saved-views/${id}/`, method: "PATCH", body }),
+      invalidatesTags: ["savedViews"],
+    }),
     deleteSavedView: builder.mutation({
       query: (id) => ({ url: `/api/saved-views/${id}/`, method: "DELETE" }),
       invalidatesTags: ["savedViews"],
@@ -18,4 +22,9 @@ export const savedViewsApi = omsApi.injectEndpoints({
   }),
 });
 
-export const { useGetSavedViewsQuery, useCreateSavedViewMutation, useDeleteSavedViewMutation } = savedViewsApi;
+export const {
+  useGetSavedViewsQuery,
+  useCreateSavedViewMutation,
+  useUpdateSavedViewMutation,
+  useDeleteSavedViewMutation,
+} = savedViewsApi;
