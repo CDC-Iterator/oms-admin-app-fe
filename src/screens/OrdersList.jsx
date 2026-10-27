@@ -26,6 +26,7 @@ import { formatPlacedDate } from "../lib/utils.js";
 import { fulfillmentTone, orderTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
+const VIEW_FILTERS = ["dropship", "pos_eligible", "unit_status"];
 
 // Row total for a saved view's tab: a one-row page, only its `count` is read.
 const useViewCount = (params) =>
@@ -204,7 +205,12 @@ export default function OrdersList() {
   const savedView = useSavedViewParams({ search, setSearch });
 
   const searchParam = debouncedSearch || undefined;
+  // Filters only saved views set (no column header): ShipTurtle, POS-processable, suggested units.
+  const viewFilters = Object.fromEntries(
+    VIEW_FILTERS.map((key) => [key, searchParams.get(key) || undefined])
+  );
   const { data, isFetching, error, refetch } = useGetOrdersQuery({
+    ...viewFilters,
     page,
     ordering: orderingParam,
     ...filterParams,
