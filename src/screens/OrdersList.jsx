@@ -112,32 +112,40 @@ function LineItemsRow({ orderId }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lineItems.map((li) => (
-                  <TableRow key={li.id}>
+                {lineItems.map((li) => {
+                  // An edit that took the line off the order leaves it at qty 0 — shown, but tagged.
+                  const removed = li.qty === 0;
+                  return (
+                  <TableRow key={li.id} className={removed ? "bg-muted/30" : undefined}>
                     <TableCell>
-                      <LineProduct line={li} layout="card" />
+                      <div className={removed ? "line-through opacity-60" : undefined}>
+                        <LineProduct line={li} layout="card" />
+                      </div>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-xs tabular-nums">{li.qty}</TableCell>
-                    <TableCell className="text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-center font-mono text-xs tabular-nums">
+                      {removed ? <StatusBadge tone="danger" className="status-chip--compact">Removed</StatusBadge> : li.qty}
+                    </TableCell>
+                    <TableCell className={"text-right font-mono text-xs tabular-nums" + (removed ? " text-muted-foreground line-through" : "")}>
                       {Number(li.price ?? 0).toLocaleString("en-IN")}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {li.is_fully_confirmed
-                        ? li.confirmed_units.join(", ")
-                        : showSuggested && li.suggested_units?.length > 0
-                          ? li.suggested_units.join(", ")
-                          : "—"}
-                      {!li.is_fully_confirmed && showSuggested && li.suggested_units?.length > 0 && (
+                      {removed
+                        ? "—"
+                        : li.is_fully_confirmed
+                          ? li.confirmed_units.join(", ")
+                          : showSuggested && li.suggested_units?.length > 0
+                            ? li.suggested_units.join(", ")
+                            : "—"}
+                      {!removed && !li.is_fully_confirmed && showSuggested && li.suggested_units?.length > 0 && (
                         <StatusBadge tone="pending" className="ml-1.5">
                           Suggested
                         </StatusBadge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <FulfilledByBadge lineItem={li} />
-                    </TableCell>
+                    <TableCell>{removed ? "—" : <FulfilledByBadge lineItem={li} />}</TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
