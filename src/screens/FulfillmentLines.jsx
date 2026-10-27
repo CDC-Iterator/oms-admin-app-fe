@@ -230,7 +230,7 @@ export default function FulfillmentLines() {
           aria-busy={isFetching}
           className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1"
         >
-          <Table className="min-w-[1200px] table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
+          <Table className="table-compact table-scroll [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             <colgroup>
               {(bulkEnabled ? COLUMN_WIDTHS : [COLUMN_WIDTHS[0] + COLUMN_WIDTHS[1], ...COLUMN_WIDTHS.slice(2)]).map((w, i) => (
                 <col key={i} style={{ width: `${w}%` }} />

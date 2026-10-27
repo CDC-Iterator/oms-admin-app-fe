@@ -358,11 +358,9 @@ export default function InventoryList() {
         // here and min-h-0/flex-1 on the nested [data-slot=table-container]
         // — same sticky-header-needs-a-bounded-scroll-container mechanics.
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-border [&>[data-slot=table-container]]:min-h-0 [&>[data-slot=table-container]]:flex-1">
-          {/* table-fixed on both layouts — each has its own first column
-              capped at 40% (Product/Location here, Product in the flat
-              layout below), long content truncated with an ellipsis
-              instead of overflowing or wrapping the row taller. */}
-          <Table className="table-compact table-fixed [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
+          {/* Content-sized columns (table-scroll) on both layouts; a cell wider than 30rem is cut with an
+              ellipsis rather than wrapping the row taller, and the table scrolls sideways. */}
+          <Table className="table-compact table-scroll [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             {locationId === null ? (
               <>
                 <TableHeader>
