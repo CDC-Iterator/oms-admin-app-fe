@@ -42,6 +42,24 @@ export function reservationTone(status) {
   }
 }
 
+/** Order.status — apps.orders.models.Order.Status. */
+export function orderTone(status) {
+  switch ((status || "").toLowerCase()) {
+    case "completed":
+      return "success";
+    case "pending":
+      return "pending";
+    case "confirmed":
+      return "info";
+    case "cancelled":
+    case "returned":
+    case "rto":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
 /** Order.payment_status — Shopify's financial_status, e.g. "paid". */
 export function paymentTone(status) {
   switch ((status || "").toLowerCase()) {
