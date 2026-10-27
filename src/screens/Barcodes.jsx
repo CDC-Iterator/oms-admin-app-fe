@@ -77,7 +77,8 @@ export default function Barcodes() {
     setPage(1);
   };
 
-  const { data: locations = [] } = useGetLocationsQuery();
+  const { data: locationData } = useGetLocationsQuery();
+  const locations = locationData?.rows;
   // Column ids are the backend's ?ordering= keys (InventoryUnitViewSet); a sort orders within each SKU group.
   const columns = useMemo(
     () => [
@@ -86,7 +87,7 @@ export default function Barcodes() {
         id: "location",
         header: "Location",
         size: 20,
-        meta: { filterOptions: locations.map((l) => ({ value: String(l.id), label: l.name })), filterParam: "location_id" },
+        meta: { filterOptions: (locations ?? []).map((l) => ({ value: String(l.id), label: l.name })), filterParam: "location_id" },
       },
       { id: "ownership", header: "Ownership", size: 13, meta: { filterOptions: OWNERSHIPS, filterParam: "ownership_type" } },
       { id: "status", header: "Status", size: 15, meta: { filterOptions: STATUSES, filterParam: "status" } },
