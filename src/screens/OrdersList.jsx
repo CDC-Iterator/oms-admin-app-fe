@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery } from "../api/services/orders.js";
+import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import SavedViews from "../components/SavedViews.jsx";
 import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
@@ -26,7 +27,7 @@ import { formatPlacedDate } from "../lib/utils.js";
 import { fulfillmentTone, orderTone, paymentTone, SUGGESTION_HIDDEN_STATUSES } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
-const VIEW_FILTERS = ["dropship", "pos_eligible", "unit_status"];
+const VIEW_FILTERS = ["dropship", "pos_eligible", "unit_status", "created", "waiting_hours", "profile"];
 
 // Row total for a saved view's tab: a one-row page, only its `count` is read.
 const useViewCount = (params) =>
@@ -150,7 +151,7 @@ function LineItemsRow({ orderId }) {
 export default function OrdersList() {
   const location = useLocation();
   // Coming back from an order restores the search text too (the filters themselves live in the URL).
-  const [search, setSearch] = useState(location.state?.search ?? "");
+  const [search, setSearch] = useState(location.state?.search ?? new URLSearchParams(location.search).get("search") ?? "");
   const debouncedSearch = useDebounced(search, 300);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
 
@@ -254,6 +255,8 @@ export default function OrdersList() {
           </Button>
         )}
       </div>
+
+      <ViewFilterChips />
 
       {error ? (
         <EmptyState

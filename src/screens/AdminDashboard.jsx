@@ -143,7 +143,7 @@ export default function AdminDashboard() {
           <Panel title="Integration health">
             <div className="grid gap-x-6 gap-y-0.5 md:grid-cols-2">
               {data.integration_health.map((h, i) => (
-                <div key={h.topic} className={cn("flex items-center justify-between rounded-lg px-2.5 py-2 text-sm", Math.floor(i / 2) % 2 === 1 ? "md:bg-muted/60" : "", i % 2 === 1 ? "max-md:bg-muted/60" : "")}>
+                <Link key={h.topic} to={h.link} className={cn("flex items-center justify-between rounded-lg px-2.5 py-2 text-sm hover:bg-muted", Math.floor(i / 2) % 2 === 1 ? "md:bg-muted/60" : "", i % 2 === 1 ? "max-md:bg-muted/60" : "")}>
                   <span className="flex items-center gap-2">
                     <span className={cn("size-2 rounded-full", HEALTH_DOT[h.status])} />
                     {h.label}
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
                     {h.failed_24h > 0 && <span className="font-medium text-destructive">{h.failed_24h} failed (24h)</span>}
                     <span title={HEALTH_TEXT[h.status]}>last success {ago(h.last_success)}</span>
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">

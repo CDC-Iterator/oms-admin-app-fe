@@ -19,6 +19,7 @@ import { useGetInventoryLocationSummaryQuery } from "../api/services/inventory.j
 import { useBookFulfillmentLinesMutation, useGetFulfillmentLinesQuery } from "../api/services/orders.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { canBookShipments } from "../lib/permissions.js";
+import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import SavedViews from "../components/SavedViews.jsx";
 import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
@@ -103,6 +104,8 @@ export default function FulfillmentLines() {
     page,
     search: debouncedSearch || undefined,
     ...filterParams,
+    invoice: searchParams.get("invoice") || undefined,
+    waiting_hours: searchParams.get("waiting_hours") || undefined,
     ordering: orderingParam,
   });
   const rows = data?.rows ?? [];
@@ -174,6 +177,8 @@ export default function FulfillmentLines() {
           </Button>
         )}
       </div>
+
+      <ViewFilterChips keys={["invoice", "waiting_hours"]} />
 
       {error ? (
         <Alert variant="destructive">

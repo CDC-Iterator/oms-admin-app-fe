@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetActivityQuery } from "../api/services/activity.js";
+import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import SavedViews from "../components/SavedViews.jsx";
 import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
@@ -153,6 +154,8 @@ export default function ActivityLog() {
     page,
     ordering: orderingParam,
     ...filterParams,
+    topic: searchParams.get("topic") || undefined,
+    since_hours: searchParams.get("since_hours") || undefined,
     search: debouncedSearch || undefined,
   });
   const loading = useMinimumLoading(isFetching);
@@ -186,6 +189,8 @@ export default function ActivityLog() {
           </Button>
         )}
       </div>
+
+      <ViewFilterChips keys={["topic", "since_hours"]} />
 
       {error ? (
         <EmptyState

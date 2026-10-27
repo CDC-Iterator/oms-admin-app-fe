@@ -99,7 +99,9 @@ export default function OperationsDashboard() {
                 ) : (
                   <div className="space-y-0.5">
                     {data.to_ship_by_location.map((l, i) => (
-                      <BreakdownRow key={l.location} value={l.count} shaded={i % 2 === 1}>{l.location}</BreakdownRow>
+                      <Link key={l.location} to={`/fulfillments?location_id=${l.location_id}`} className="block rounded-lg hover:bg-muted">
+                        <BreakdownRow value={l.count} shaded={i % 2 === 1}>{l.location}</BreakdownRow>
+                      </Link>
                     ))}
                   </div>
                 )}
