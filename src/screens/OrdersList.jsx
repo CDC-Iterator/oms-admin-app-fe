@@ -14,6 +14,7 @@ import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
+import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetOrderQuery, useGetOrdersQuery, useGetOrderStatusSummaryQuery } from "../api/services/orders.js";
@@ -225,6 +226,14 @@ export default function OrdersList() {
             />
           )}
         </div>
+        <Select value={status} onChange={(e) => handleStatusChange(e.target.value)} aria-label="Order status">
+          <option value="">All statuses {statusSummary ? `(${totalCount})` : ""}</option>
+          {(statusSummary ?? []).map((st) => (
+            <option key={st.status} value={st.status}>
+              {st.label} ({st.count})
+            </option>
+          ))}
+        </Select>
         <SavedViews resource="orders" params={savedView.params} onApply={savedView.apply} />
         {activeFilters > 0 && (
           <Button
@@ -235,34 +244,6 @@ export default function OrdersList() {
             Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
           </Button>
         )}
-      </div>
-
-      <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
-        <button
-          onClick={() => handleStatusChange("")}
-          className={
-            "rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
-            (status === ""
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground")
-          }
-        >
-          All {statusSummary ? `(${totalCount})` : ""}
-        </button>
-        {(statusSummary ?? []).map((s) => (
-          <button
-            key={s.status}
-            onClick={() => handleStatusChange(s.status)}
-            className={
-              "rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
-              (status === s.status
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground")
-            }
-          >
-            {s.label} ({s.count})
-          </button>
-        ))}
       </div>
 
       {error ? (
