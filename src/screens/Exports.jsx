@@ -102,12 +102,7 @@ export default function Exports() {
             <Loader2 className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-label="Loading" />
           )}
         </div>
-        <ViewFilterChips table={table} />
-        {activeFilters > 0 && (
-          <Button size="sm" variant="outline" onClick={clearFilters}>
-            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
-          </Button>
-        )}
+        <ViewFilterChips table={table} onClear={clearFilters} />
       </div>
 
       {error ? (

@@ -40,7 +40,8 @@ const LEVEL_OPTIONS = [
 // Column ids are the backend's ?ordering= keys (apps.inventory.filters).
 const COLUMNS = [
   { id: "product", header: "Product" },
-  { id: "item_code", header: "Item code" },
+  { id: "item_code", header: "Item code", meta: { filterIds: true, filterParam: "item_codes", filterNoun: "item codes", filterPlaceholder: "CL12345, CL67890…" } },
+  { id: "style_code", header: "Style code", enableSorting: false, meta: { filterIds: true, filterParam: "style_codes", filterNoun: "style codes", filterPlaceholder: "one style code per line…" } },
   { id: "available", header: "Available" },
   { id: "sku_available", header: "Available" },
   { id: "level", enableSorting: false, meta: { label: "Level", filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
@@ -270,12 +271,7 @@ export default function InventoryList() {
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full"
         />
-        <ViewFilterChips table={table} />
-        {activeFilters > 0 && (
-          <Button size="sm" variant="outline" onClick={clearFilters}>
-            Clear filter
-          </Button>
-        )}
+        <ViewFilterChips table={table} onClear={clearFilters} />
       </div>
 
       <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
@@ -343,7 +339,9 @@ export default function InventoryList() {
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
-                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Style code</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                      <ColumnHeader column={table.getColumn("style_code")} title="Style code" />
+                    </TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Color</TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Size</TableHead>
                     {/* Quantity sorts would scatter the per-sku groups, so they only apply to a location tab. */}
@@ -450,7 +448,9 @@ export default function InventoryList() {
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
-                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Style code</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                      <ColumnHeader column={table.getColumn("style_code")} title="Style code" />
+                    </TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Color</TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Size</TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">

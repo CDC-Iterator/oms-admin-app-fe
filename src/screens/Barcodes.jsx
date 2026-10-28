@@ -81,8 +81,8 @@ export default function Barcodes() {
   const columns = useMemo(
     () => [
       { id: "barcode", header: "Barcode", size: 13 },
-      { id: "item_code", header: "Item code", size: 9 },
-      { id: "style_code", header: "Style code", size: 9, enableSorting: false },
+      { id: "item_code", header: "Item code", size: 9, meta: { filterIds: true, filterParam: "item_codes", filterNoun: "item codes", filterPlaceholder: "CL12345, CL67890…" } },
+      { id: "style_code", header: "Style code", size: 9, enableSorting: false, meta: { filterIds: true, filterParam: "style_codes", filterNoun: "style codes", filterPlaceholder: "one style code per line…" } },
       { id: "product", header: "Product", size: 14, enableSorting: false },
       { id: "color", header: "Color", size: 7, enableSorting: false },
       { id: "size", header: "Size", size: 6, enableSorting: false },
@@ -146,13 +146,8 @@ export default function Barcodes() {
           )}
         </div>
         <ExportMenu resource="barcodes" params={savedView.params} />
-        <ViewFilterChips table={table} />
+        <ViewFilterChips table={table} onClear={clearFilters} />
         <SavedViews resource="barcodes" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
-        {activeFilters > 0 && (
-          <Button size="sm" variant="outline" onClick={clearFilters}>
-            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
-          </Button>
-        )}
       </div>
 
       {error ? (

@@ -258,17 +258,8 @@ export default function OrdersList() {
             />
           )}
         </div>
-        <ViewFilterChips table={table} keys={VIEW_ONLY_FILTERS} />
+        <ViewFilterChips table={table} onClear={clearFilters} keys={VIEW_ONLY_FILTERS} />
         <SavedViews resource="orders" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
-        {activeFilters > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={clearFilters}
-          >
-            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
-          </Button>
-        )}
       </div>
 
       {error ? (

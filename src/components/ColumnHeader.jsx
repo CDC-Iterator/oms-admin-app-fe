@@ -44,13 +44,13 @@ function IdListFilter({ column, title }) {
       <Popover.Portal>
         <Popover.Positioner align="start" sideOffset={6} className="z-50">
           <Popover.Popup className="w-72 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10">
-            <p className="mb-1.5 text-xs font-medium">{title}s — paste ids, comma or line separated</p>
+            <p className="mb-1.5 text-xs font-medium">{title}s — paste {column.columnDef.meta?.filterNoun ?? "ids"}, comma or line separated</p>
             <Textarea
               autoFocus
               rows={6}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="#CDC163482, #CDC162263…"
+              placeholder={column.columnDef.meta?.filterPlaceholder ?? "#CDC163482, #CDC162263…"}
               className="min-h-24 font-mono text-xs"
             />
             <div className="mt-2 flex items-center justify-between gap-2">
