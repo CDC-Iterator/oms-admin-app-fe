@@ -97,7 +97,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-muted-foreground">No shipments in the last 30 days.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full bg-card text-sm">
                     <thead>
                       <tr className="text-left text-xs text-muted-foreground">
                         <th className="px-2.5 py-1.5 font-medium">Courier</th>
