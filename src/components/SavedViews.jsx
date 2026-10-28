@@ -25,6 +25,10 @@ import { useToast } from "../hooks/useToast.js";
 import { formatApiError } from "../lib/errors.js";
 import { isAdminUser } from "../lib/permissions.js";
 
+// Every filter a view sets is applied as-is (more filters may be on top of it).
+const withinParams = (view, current) =>
+  Object.keys(view).length > 0 && Object.entries(view).every(([k, v]) => String(current[k] ?? "") === String(v ?? ""));
+
 const sameParams = (a, b) => {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   return [...keys].every((k) => String(a[k] ?? "") === String(b[k] ?? ""));
@@ -63,6 +67,9 @@ export default function SavedViews({ resource, params, onApply, useCount, allPar
   // `ignoreParams` (e.g. "search") don't decide which tab is lit; saving still captures them.
   const matchParams = Object.fromEntries(Object.entries(params).filter(([key]) => !ignoreParams.includes(key)));
   const active = views.find((v) => sameParams(v.params, matchParams));
+  // The tab a view is open on, even with more filters applied on top: its count follows them.
+  const openView =
+    active ?? views.filter((v) => withinParams(v.params, matchParams)).sort((a, b) => Object.keys(b.params).length - Object.keys(a.params).length)[0];
   const hasFilters = Object.keys(matchParams).length > 0;
   // The "All" tab: nothing filtered, or (for a screen with a default filter) its explicit "everything" params.
   const isAll = sameParams(matchParams, allParams) || (!hasFilters && Object.keys(allParams).length === 0);
@@ -121,7 +128,7 @@ export default function SavedViews({ resource, params, onApply, useCount, allPar
     (selected ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground");
 
   const renderView = (view) => {
-    const selected = active?.id === view.id;
+    const selected = openView?.id === view.id;
     return (
       <div key={view.id} role="presentation" className={"group flex items-center " + tab(selected)}>
         <button
@@ -132,7 +139,7 @@ export default function SavedViews({ resource, params, onApply, useCount, allPar
           title={view.is_owner ? undefined : `Shared by ${view.owner}`}
         >
           {view.name}
-          {useCount && <TabCount useCount={useCount} params={view.params} />}
+          {useCount && <TabCount useCount={useCount} params={selected ? params : view.params} />}
         </button>
         {(view.is_owner || admin) && (
           <button
