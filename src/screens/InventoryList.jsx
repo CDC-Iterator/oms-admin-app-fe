@@ -68,6 +68,9 @@ function groupBySku(rows) {
         sku_id: row.sku_id,
         item_code: row.sku,
         product_title: row.product_title,
+        style_code: row.style_code,
+        color: row.color,
+        size: row.size,
         rows: [],
         totalAvailable: 0,
       };
@@ -340,6 +343,9 @@ export default function InventoryList() {
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Style code</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Color</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Size</TableHead>
                     {/* Quantity sorts would scatter the per-sku groups, so they only apply to a location tab. */}
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       {/* Sorts whole SKUs by their total across locations. */}
@@ -352,12 +358,12 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isEmpty && <TableEmptyRow colSpan={5} />}
+                  {isEmpty && <TableEmptyRow colSpan={8} />}
                   {groups.map((group) => {
                     const groupLevel = stockLevel(group.totalAvailable);
                     return (
                       <Fragment key={group.sku_id}>
-                        {/* Same 5 columns as its child rows — item code once (not repeated per
+                        {/* Same 8 columns as its child rows — item code once (not repeated per
                             location), Available the sum of every row below it. */}
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
                           <TableCell className="truncate py-2 font-medium" title={group.product_title}>
@@ -367,6 +373,9 @@ export default function InventoryList() {
                             </StatusBadge>
                           </TableCell>
                           <TableCell className="font-mono text-xs">{group.item_code ?? "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{group.style_code || "—"}</TableCell>
+                          <TableCell className="text-xs">{group.color || "—"}</TableCell>
+                          <TableCell className="text-xs">{group.size || "—"}</TableCell>
                           <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalAvailable}</TableCell>
                           <TableCell className="text-center">
                             <StatusBadge tone={groupLevel.tone}>{groupLevel.label}</StatusBadge>
@@ -397,6 +406,9 @@ export default function InventoryList() {
                               <TableCell className="truncate pl-6 text-sm" title={row.location}>
                                 {row.location}
                               </TableCell>
+                              <TableCell />
+                              <TableCell />
+                              <TableCell />
                               <TableCell />
                               <TableCell className="text-center font-mono text-xs tabular-nums">{row.available_qty}</TableCell>
                               <TableCell className="text-center">
@@ -438,6 +450,9 @@ export default function InventoryList() {
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Style code</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Color</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Size</TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("available")} title="Available" align="center" />
                     </TableHead>
@@ -448,7 +463,7 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isEmpty && <TableEmptyRow colSpan={5} />}
+                  {isEmpty && <TableEmptyRow colSpan={8} />}
                   {flatRows.map((row) => {
                     const level = stockLevel(row.available_qty);
                     return (
@@ -457,6 +472,9 @@ export default function InventoryList() {
                           {row.product_title}
                         </TableCell>
                         <TableCell className="font-mono text-xs">{row.sku ?? "—"}</TableCell>
+                        <TableCell className="font-mono text-xs">{row.style_code || "—"}</TableCell>
+                        <TableCell className="text-xs">{row.color || "—"}</TableCell>
+                        <TableCell className="text-xs">{row.size || "—"}</TableCell>
                         <TableCell className="text-center font-mono text-xs tabular-nums">{row.available_qty}</TableCell>
                         <TableCell className="text-center">
                           <StatusBadge tone={level.tone}>{level.label}</StatusBadge>
