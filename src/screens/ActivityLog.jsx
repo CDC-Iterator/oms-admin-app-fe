@@ -295,7 +295,7 @@ export default function ActivityLog() {
               <div className="animate-indeterminate h-full w-1/3 bg-primary" />
             </div>
           )}
-          <Table className="table-scroll [&_td]:px-1.5 [&_th]:px-1.5">
+          <Table className="table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {table.getHeaderGroups()[0].headers.map((header) => (
