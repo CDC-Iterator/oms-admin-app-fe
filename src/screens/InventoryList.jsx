@@ -40,7 +40,8 @@ const LEVEL_OPTIONS = [
 // Column ids are the backend's ?ordering= keys (apps.inventory.filters).
 const COLUMNS = [
   { id: "product", header: "Product" },
-  { id: "item_code", header: "Item code" },
+  { id: "item_code", header: "Item code", meta: { filterIds: true, filterParam: "item_codes", filterNoun: "item codes", filterPlaceholder: "CL12345, CL67890…" } },
+  { id: "style_code", header: "Style code", enableSorting: false, meta: { filterIds: true, filterParam: "style_codes", filterNoun: "style codes", filterPlaceholder: "one style code per line…" } },
   { id: "available", header: "Available" },
   { id: "sku_available", header: "Available" },
   { id: "level", enableSorting: false, meta: { label: "Level", filterOptions: LEVEL_OPTIONS, filterParam: "level" } },
@@ -68,6 +69,9 @@ function groupBySku(rows) {
         sku_id: row.sku_id,
         item_code: row.sku,
         product_title: row.product_title,
+        style_code: row.style_code,
+        color: row.color,
+        size: row.size,
         rows: [],
         totalAvailable: 0,
       };
@@ -267,12 +271,7 @@ export default function InventoryList() {
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full"
         />
-        <ViewFilterChips table={table} />
-        {activeFilters > 0 && (
-          <Button size="sm" variant="outline" onClick={clearFilters}>
-            Clear filter
-          </Button>
-        )}
+        <ViewFilterChips table={table} onClear={clearFilters} />
       </div>
 
       <div className="mb-3 flex shrink-0 flex-wrap gap-1 border-b border-border">
@@ -340,6 +339,11 @@ export default function InventoryList() {
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                      <ColumnHeader column={table.getColumn("style_code")} title="Style code" />
+                    </TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Color</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Size</TableHead>
                     {/* Quantity sorts would scatter the per-sku groups, so they only apply to a location tab. */}
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       {/* Sorts whole SKUs by their total across locations. */}
@@ -352,12 +356,12 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isEmpty && <TableEmptyRow colSpan={5} />}
+                  {isEmpty && <TableEmptyRow colSpan={8} />}
                   {groups.map((group) => {
                     const groupLevel = stockLevel(group.totalAvailable);
                     return (
                       <Fragment key={group.sku_id}>
-                        {/* Same 5 columns as its child rows — item code once (not repeated per
+                        {/* Same 8 columns as its child rows — item code once (not repeated per
                             location), Available the sum of every row below it. */}
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
                           <TableCell className="truncate py-2 font-medium" title={group.product_title}>
@@ -367,6 +371,9 @@ export default function InventoryList() {
                             </StatusBadge>
                           </TableCell>
                           <TableCell className="font-mono text-xs">{group.item_code ?? "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{group.style_code || "—"}</TableCell>
+                          <TableCell className="text-xs">{group.color || "—"}</TableCell>
+                          <TableCell className="text-xs">{group.size || "—"}</TableCell>
                           <TableCell className="text-center font-mono text-xs font-semibold tabular-nums">{group.totalAvailable}</TableCell>
                           <TableCell className="text-center">
                             <StatusBadge tone={groupLevel.tone}>{groupLevel.label}</StatusBadge>
@@ -397,6 +404,9 @@ export default function InventoryList() {
                               <TableCell className="truncate pl-6 text-sm" title={row.location}>
                                 {row.location}
                               </TableCell>
+                              <TableCell />
+                              <TableCell />
+                              <TableCell />
                               <TableCell />
                               <TableCell className="text-center font-mono text-xs tabular-nums">{row.available_qty}</TableCell>
                               <TableCell className="text-center">
@@ -439,6 +449,11 @@ export default function InventoryList() {
                       <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                     </TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                      <ColumnHeader column={table.getColumn("style_code")} title="Style code" />
+                    </TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Color</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">Size</TableHead>
+                    <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                       <ColumnHeader column={table.getColumn("available")} title="Available" align="center" />
                     </TableHead>
                     <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
@@ -448,7 +463,7 @@ export default function InventoryList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isEmpty && <TableEmptyRow colSpan={5} />}
+                  {isEmpty && <TableEmptyRow colSpan={8} />}
                   {flatRows.map((row) => {
                     const level = stockLevel(row.available_qty);
                     return (
@@ -457,6 +472,9 @@ export default function InventoryList() {
                           {row.product_title}
                         </TableCell>
                         <TableCell className="font-mono text-xs">{row.sku ?? "—"}</TableCell>
+                        <TableCell className="font-mono text-xs">{row.style_code || "—"}</TableCell>
+                        <TableCell className="text-xs">{row.color || "—"}</TableCell>
+                        <TableCell className="text-xs">{row.size || "—"}</TableCell>
                         <TableCell className="text-center font-mono text-xs tabular-nums">{row.available_qty}</TableCell>
                         <TableCell className="text-center">
                           <StatusBadge tone={level.tone}>{level.label}</StatusBadge>

@@ -44,7 +44,7 @@ function columnPill(column, value) {
  * A pill for every applied filter — the table's column filters plus the dashboard/saved-view ones —
  * each with an ✕ to clear it. Sits above the saved-view tabs.
  */
-export default function ViewFilterChips({ table, keys = [], className = "order-last w-full" }) {
+export default function ViewFilterChips({ table, keys = [], onClear, className = "order-last w-full" }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const columnFilters = table ? table.getState().columnFilters : [];
@@ -81,6 +81,11 @@ export default function ViewFilterChips({ table, keys = [], className = "order-l
           </button>
         </span>
       ))}
+      {onClear && columnFilters.length > 0 && (
+        <button type="button" onClick={onClear} className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium hover:bg-muted">
+          Clear filters
+        </button>
+      )}
     </div>
   );
 }

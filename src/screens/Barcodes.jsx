@@ -80,23 +80,26 @@ export default function Barcodes() {
   // barcode/location/ownership/status sort within each SKU, and qty/updated sort the whole list.
   const columns = useMemo(
     () => [
-      { id: "barcode", header: "Barcode", size: 15 },
-      { id: "item_code", header: "Item code", size: 11 },
-      { id: "product", header: "Product", size: 20, enableSorting: false },
+      { id: "barcode", header: "Barcode", size: 13 },
+      { id: "item_code", header: "Item code", size: 9, meta: { filterIds: true, filterParam: "item_codes", filterNoun: "item codes", filterPlaceholder: "CL12345, CL67890…" } },
+      { id: "style_code", header: "Style code", size: 9, enableSorting: false, meta: { filterIds: true, filterParam: "style_codes", filterNoun: "style codes", filterPlaceholder: "one style code per line…" } },
+      { id: "product", header: "Product", size: 14, enableSorting: false },
+      { id: "color", header: "Color", size: 7, enableSorting: false },
+      { id: "size", header: "Size", size: 6, enableSorting: false },
       {
         id: "location",
         header: "Location",
-        size: 14,
+        size: 11,
         meta: {
           filterOptions: (locations ?? []).map((l) => ({ value: String(l.id), label: l.name })),
           filterParam: "location_id",
           filterMulti: true,
         },
       },
-      { id: "ownership", header: "Ownership", size: 10, meta: { filterOptions: OWNERSHIPS, filterParam: "ownership_type", filterMulti: true } },
-      { id: "status", header: "Status", size: 12, meta: { filterOptions: STATUSES, filterParam: "status", filterMulti: true } },
-      { id: "qty", header: "Qty", size: 7, meta: { filterIntRange: true, filterParam: "qty" } },
-      { id: "updated", header: "Updated", size: 11 },
+      { id: "ownership", header: "Ownership", size: 8, meta: { filterOptions: OWNERSHIPS, filterParam: "ownership_type", filterMulti: true } },
+      { id: "status", header: "Status", size: 10, meta: { filterOptions: STATUSES, filterParam: "status", filterMulti: true } },
+      { id: "qty", header: "Qty", size: 5, meta: { filterIntRange: true, filterParam: "qty" } },
+      { id: "updated", header: "Updated", size: 8 },
     ],
     [locations]
   );
@@ -143,13 +146,8 @@ export default function Barcodes() {
           )}
         </div>
         <ExportMenu resource="barcodes" params={savedView.params} />
-        <ViewFilterChips table={table} />
+        <ViewFilterChips table={table} onClear={clearFilters} />
         <SavedViews resource="barcodes" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
-        {activeFilters > 0 && (
-          <Button size="sm" variant="outline" onClick={clearFilters}>
-            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
-          </Button>
-        )}
       </div>
 
       {error ? (
@@ -206,9 +204,12 @@ export default function Barcodes() {
                     <TableCell className="truncate py-1 font-mono text-xs" title={unit.sku ?? undefined}>
                       {unit.sku ?? "—"}
                     </TableCell>
+                    <TableCell className="truncate py-1 font-mono text-xs" title={unit.style_code}>{unit.style_code || "—"}</TableCell>
                     <TableCell className="truncate py-1 text-xs" title={unit.product}>
                       {unit.product}
                     </TableCell>
+                    <TableCell className="truncate py-1 text-xs" title={unit.color}>{unit.color || "—"}</TableCell>
+                    <TableCell className="truncate py-1 text-xs" title={unit.size}>{unit.size || "—"}</TableCell>
                     <TableCell className="truncate py-1 text-xs">{unit.location}</TableCell>
                     <TableCell className="truncate py-1 text-xs capitalize">{unit.ownership_type}</TableCell>
                     <TableCell className="py-1">

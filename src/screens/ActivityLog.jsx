@@ -53,7 +53,7 @@ const COLUMNS = [
   { id: "summary", header: "Details", size: 22, enableSorting: false },
   { id: "status", header: "Status", size: 10, meta: { filterOptions: STATUSES, filterParam: "status" } },
   { id: "error", header: "Error", size: 14, enableSorting: false },
-  { id: "timestamp", header: "When", size: 16 },
+  { id: "timestamp", header: "When", size: 16, meta: { filterDateRange: true, filterParam: "when" } },
 ];
 const COLUMN_COUNT = COLUMNS.length;
 const DEFAULT_ORDERING = "-timestamp";
@@ -266,13 +266,8 @@ export default function ActivityLog() {
             />
           )}
         </div>
-        <ViewFilterChips table={table} keys={["topic", "since_hours"]} />
+        <ViewFilterChips table={table} onClear={clearFilters} keys={["topic", "since_hours"]} />
         <SavedViews resource="activity" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} />
-        {activeFilters > 0 && (
-          <Button size="sm" variant="outline" onClick={clearFilters}>
-            Clear {activeFilters} filter{activeFilters > 1 ? "s" : ""}
-          </Button>
-        )}
       </div>
 
       {error ? (
@@ -300,7 +295,7 @@ export default function ActivityLog() {
               <div className="animate-indeterminate h-full w-1/3 bg-primary" />
             </div>
           )}
-          <Table className="table-scroll [&_td]:px-1.5 [&_th]:px-1.5">
+          <Table className="table-fixed [&_td]:px-1.5 [&_th]:px-1.5">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {table.getHeaderGroups()[0].headers.map((header) => (
