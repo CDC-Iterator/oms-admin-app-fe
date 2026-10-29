@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Popover } from "@base-ui/react/popover";
 import { Boxes, Check, PackageSearch, Unlink, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
@@ -36,6 +37,7 @@ import { useServerColumns } from "../hooks/useServerColumns.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useToast } from "../hooks/useToast.js";
 import { formatApiError } from "../lib/errors.js";
+import { mappedLabel } from "../lib/mapping.js";
 import { stockLevel } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
@@ -86,45 +88,63 @@ function variantLabel(variant) {
 }
 
 function MappingCell({ variant, channelKey, canManageMappings, onClick, onUnmap }) {
+  const [open, setOpen] = useState(false);
   const mapping = variant.mappings?.[channelKey];
-  const label = mapping && (mapping.channel_title ? `${mapping.channel_title} (${mapping.external_sku})` : mapping.external_sku);
-  const content = (
-    <>
-      {mapping ? (
-        <Check className="size-4 shrink-0 text-[color-mix(in_srgb,var(--status-success)_70%,black)]" />
-      ) : (
-        <X className="size-4 shrink-0 text-muted-foreground" />
-      )}
-      {mapping && (
-        <span className="truncate font-mono text-xs text-muted-foreground" title={label}>
-          {label}
-        </span>
-      )}
-    </>
-  );
-  if (!canManageMappings) {
-    return <div className="flex items-center justify-center gap-1.5">{content}</div>;
-  }
+  const channelLabel = CHANNELS.find((c) => c.key === channelKey)?.label;
+  const act = (handler) => () => {
+    setOpen(false);
+    handler();
+  };
   return (
-    <div className="flex w-full items-center justify-center gap-1">
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded px-1 py-0.5 hover:bg-accent"
-      >
-        {content}
-      </button>
-      {mapping && (
-        <Tooltip>
-          <TooltipTrigger
-            render={<button type="button" onClick={onUnmap} className="shrink-0 rounded p-0.5 hover:bg-accent" />}
-          >
-            <Unlink className="size-3.5 text-muted-foreground" />
-            <span className="sr-only">Remove mapping</span>
-          </TooltipTrigger>
-          <TooltipContent>Remove mapping</TooltipContent>
-        </Tooltip>
-      )}
+    <div className="flex items-center justify-center">
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger
+          openOnHover
+          delay={150}
+          closeDelay={100}
+          aria-label={`${channelLabel}: ${mapping ? "mapped" : "not mapped"}`}
+          className="rounded p-1 hover:bg-accent"
+        >
+          {mapping ? (
+            <Check className="size-4 text-[color-mix(in_srgb,var(--status-success)_70%,black)]" />
+          ) : (
+            <X className="size-4 text-muted-foreground" />
+          )}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner side="bottom" align="center" sideOffset={6} className="z-50">
+            <Popover.Popup className="w-72 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10">
+              <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                {channelLabel} · {mapping ? "mapped" : "not mapped"}
+              </p>
+              {mapping ? (
+                <div className="mt-1.5 space-y-1">
+                  <p className="text-sm leading-snug font-medium">{mapping.channel_title || "Title not synced yet"}</p>
+                  <p className="font-mono text-xs text-muted-foreground">SKU {mapping.external_sku}</p>
+                  {mapping.external_variant_id && (
+                    <p className="font-mono text-xs text-muted-foreground">Variant {mapping.external_variant_id}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-1.5 text-sm text-muted-foreground">No {channelLabel} listing is mapped to {variant.item_code}.</p>
+              )}
+              {canManageMappings && (
+                <div className="mt-2.5 flex gap-1.5">
+                  <Button size="xs" variant="outline" onClick={act(onClick)}>
+                    {mapping ? "Change" : "Map"}
+                  </Button>
+                  {mapping && (
+                    <Button size="xs" variant="outline" onClick={act(onUnmap)}>
+                      <Unlink className="size-3" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              )}
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
     </div>
   );
 }
@@ -195,7 +215,7 @@ function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
           <span className="font-mono text-xs">{row.external_sku}</span>
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
             {row.title && row.title !== "Default Title" ? row.title : ""}
-            {row.mapped_item_code && <StatusBadge tone="pending">mapped to {row.mapped_item_code}</StatusBadge>}
+            {row.mapped_item_code && <StatusBadge tone="pending">mapped to {mappedLabel(row)}</StatusBadge>}
           </span>
         </>
       )}
@@ -442,10 +462,10 @@ export default function ProductsList() {
                 <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("item_code")} title="Item code" />
                 </TableHead>
-                <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
+                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("shopify")} title="Shopify" align="center" />
                 </TableHead>
-                <TableHead className="w-[15%] shadow-[inset_0_-1px_0_0_var(--border)]">
+                <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("tatacliq")} title="TataCliq" align="center" />
                 </TableHead>
                 <TableHead className="w-[10%] shadow-[inset_0_-1px_0_0_var(--border)]">Actions</TableHead>

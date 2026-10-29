@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { ChannelBadge } from "../components/ChannelBadge.jsx";
+import { mappedLabel } from "../lib/mapping.js";
 import { EmptyState } from "../components/empty-state.jsx";
 import Pagination from "../components/Pagination.jsx";
 import ReferencePickerDialog from "../components/ReferencePickerDialog.jsx";
@@ -173,7 +174,7 @@ function UnmapConfirmDialog({ target, onOpenChange, onUnmapped }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Remove mapping?</AlertDialogTitle>
           <AlertDialogDescription>
-            {target?.external_sku} will no longer be linked to {target?.mapped_item_code}. You can re-map it later
+            {target?.external_sku} will no longer be linked to {target && mappedLabel(target)}. You can re-map it later
             from either screen.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -412,7 +413,7 @@ export default function ChannelProducts() {
                               className="rounded px-1 py-0.5 hover:bg-accent"
                             >
                               {row.mapped_item_code ? (
-                                <StatusBadge tone="success">{row.mapped_item_code}</StatusBadge>
+                                <StatusBadge tone="success">{mappedLabel(row)}</StatusBadge>
                               ) : (
                                 <StatusBadge tone="pending">Unmapped</StatusBadge>
                               )}
@@ -436,7 +437,7 @@ export default function ChannelProducts() {
                             )}
                           </div>
                         ) : row.mapped_item_code ? (
-                          <StatusBadge tone="success">{row.mapped_item_code}</StatusBadge>
+                          <StatusBadge tone="success">{mappedLabel(row)}</StatusBadge>
                         ) : (
                           <StatusBadge tone="pending">Unmapped</StatusBadge>
                         )}
