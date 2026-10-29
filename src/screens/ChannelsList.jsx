@@ -50,13 +50,12 @@ const SUMMARY_LABELS = {
   caller_name: "Caller name",
 };
 
+// Caller name and base URL are filled in by the backend (seller code, TATACLIQ_BASE_URL).
 const TATACLIQ_FIELDS = [
+  { key: "basic_auth_token", label: "API Key", type: "password" },
   { key: "username", label: "Username" },
-  { key: "seller_code", label: "Seller code" },
-  { key: "caller_name", label: "Caller name" },
-  { key: "basic_auth_token", label: "Basic auth token" },
-  { key: "base_url", label: "Base URL", placeholder: "https://…" },
   { key: "password", label: "Password", type: "password" },
+  { key: "seller_code", label: "Seller Code" },
 ];
 
 // Real 2-step OAuth install: POST for a signed, short-lived ticket, then a
@@ -146,7 +145,8 @@ function ChannelLocationsManager({ connection }) {
   const handleSync = async () => {
     try {
       const created = await syncLocations(connection.name).unwrap();
-      showToast(created.length ? `Added ${created.length} location(s) from Shopify.` : "No new active locations found.");
+      const source = connection.name === "tatacliq" ? "TataCliq" : "Shopify";
+      showToast(created.length ? `Added ${created.length} location(s) from ${source}.` : "No new locations found.");
     } catch (err) {
       showToast(formatApiError(err));
     }
@@ -156,11 +156,17 @@ function ChannelLocationsManager({ connection }) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <Label>Locations (inventory pushes)</Label>
-        {connection.name === "shopify" && (
-          <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={handleSync} disabled={syncing}>
-            {syncing ? "Syncing…" : "Sync from Shopify"}
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={handleSync}
+          disabled={syncing}
+          title={connection.name === "tatacliq" ? "TataCliq has no warehouse list: this adds the SlaveIDs on orders it is holding." : undefined}
+        >
+          {syncing ? "Syncing…" : `Sync from ${connection.name === "tatacliq" ? "TataCliq" : "Shopify"}`}
+        </Button>
       </div>
       {connection.locations.length > 0 && (
         <ul className="space-y-1">
@@ -218,8 +224,6 @@ function TataCliqConnectDialog({ open, onOpenChange, onConnected, connection }) 
       setForm({
         username: connection?.summary?.username ?? "",
         seller_code: connection?.summary?.seller_code ?? "",
-        caller_name: connection?.summary?.caller_name ?? "",
-        base_url: connection?.summary?.base_url ?? "",
       });
       setError(null);
     }
@@ -244,7 +248,7 @@ function TataCliqConnectDialog({ open, onOpenChange, onConnected, connection }) 
           <DialogTitle>{isEditing ? "Edit TataCliq connection" : "Connect TataCliq"}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Basic auth token and password must be re-entered even if unchanged — the saved values never round-trip back to this form."
+              ? "API key and password must be re-entered even if unchanged — the saved values never round-trip back to this form."
               : "PartnerConnect credentials from TataCliq's seller onboarding."}
           </DialogDescription>
         </DialogHeader>

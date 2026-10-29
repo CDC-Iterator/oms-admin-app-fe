@@ -14,7 +14,7 @@ export const channelProductsApi = omsApi.injectEndpoints({
     }),
     // Admin-only on the backend — dispatches sync_channel_products async (202).
     syncChannelProducts: builder.mutation({
-      query: () => ({ url: "/api/channels/products/sync/", method: "POST" }),
+      query: (channel) => ({ url: "/api/channels/products/sync/", method: "POST", body: channel ? { channel } : undefined }),
       invalidatesTags: ["channelProducts"],
     }),
   }),

@@ -265,13 +265,12 @@ export default function ChannelProducts() {
   const CHANNEL_TAB_COUNTS = { "": channelTabAll?.count, shopify: channelTabShopify?.count, tatacliq: channelTabTatacliq?.count };
 
   const [syncChannelProducts, { isLoading: isSyncing }] = useSyncChannelProductsMutation();
+  // The open channel tab syncs that channel; "All channels" syncs both.
   const handleSync = async () => {
-    try {
-      await syncChannelProducts().unwrap();
-      showToast("Sync started — refresh in a moment to see new/updated rows.");
-    } catch (err) {
-      showToast(formatApiError(err));
-    }
+    const targets = channel ? [channel] : ["shopify", "tatacliq"];
+    const results = await Promise.allSettled(targets.map((name) => syncChannelProducts(name).unwrap()));
+    const failed = results.map((r, i) => (r.status === "rejected" ? `${targets[i]}: ${formatApiError(r.reason)}` : null)).filter(Boolean);
+    showToast(failed.length ? `Sync failed — ${failed.join("; ")}` : "Sync started — refresh in a moment to see new/updated rows.");
   };
 
   const [mapTarget, setMapTarget] = useState(null);
@@ -281,7 +280,7 @@ export default function ChannelProducts() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Every product/variant live on Shopify, mapped or not — proactive visibility, distinct from
+          Every product/variant live on Shopify and TataCliq, mapped or not — proactive visibility, distinct from
           Unmapped SKUs (which only fills once an order arrives on an unresolved SKU).
         </p>
         {canSync && (
