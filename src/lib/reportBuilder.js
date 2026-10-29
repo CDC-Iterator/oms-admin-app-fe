@@ -4,6 +4,8 @@ export const OP_LABELS = {
   is_not: "is not",
   contains: "contains",
   not_contains: "doesn't contain",
+  starts_with: "starts with",
+  not_starts_with: "doesn't start with",
   in: "is one of",
   not_in: "is not one of",
   empty: "is empty",

@@ -3,6 +3,7 @@ import { Boxes, Check, PackageSearch, Unlink, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/empty-state.jsx";
+import ExportMenu from "../components/ExportMenu.jsx";
 import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import Pagination from "../components/Pagination.jsx";
@@ -154,7 +155,7 @@ function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
   const [search, setSearch] = useState(undefined);
 
   const { data, isFetching } = useGetChannelProductsQuery(
-    { channel: target?.channelKey, search },
+    { channel: target?.channelKey, search, mapped: "false" }, // only variants not yet mapped
     { skip: !target }
   );
   const groups = useMemo(() => groupChannelProductsByProduct(data?.rows ?? []), [data]);
@@ -187,7 +188,7 @@ function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
       isFetching={isFetching}
       groups={groups}
       onSelect={handleSelect}
-      emptyTitle="No synced products found"
+      emptyTitle="No unmapped products found"
       emptyDescription={`Run "Sync now" on Channel Products to pull the latest ${channelLabel} catalog.`}
       renderVariant={(row) => (
         <>
@@ -401,6 +402,7 @@ export default function ProductsList() {
             onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-80"
           />
+          <ExportMenu resource="products" params={{ ...activeParams, page: undefined }} />
         </div>
       </div>
 

@@ -9,6 +9,7 @@ export const EXPORT_STATUSES = [
 ];
 export const EXPORT_RESOURCES = [
   { value: "barcodes", label: "Barcodes" },
+  { value: "products", label: "Product master" },
   { value: "reports", label: "Reports" },
 ];
 export const EXPORT_POLL_MS = 3000;
