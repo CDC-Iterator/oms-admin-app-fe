@@ -3,6 +3,7 @@ import { Boxes, Check, PackageSearch, Unlink, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "../components/empty-state.jsx";
+import ExportMenu from "../components/ExportMenu.jsx";
 import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import Pagination from "../components/Pagination.jsx";
@@ -401,6 +402,7 @@ export default function ProductsList() {
             onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-80"
           />
+          <ExportMenu resource="products" params={{ ...activeParams, page: undefined }} />
         </div>
       </div>
 
