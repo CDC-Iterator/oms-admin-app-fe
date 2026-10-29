@@ -51,6 +51,13 @@ const PAYMENT_STATUSES = ["paid", "partially_paid", "pending", "refunded", "part
   label: v.replace("_", " "),
 }));
 const FULFILLMENT_STATUSES = ["unfulfilled", "partial", "fulfilled", "restocked"].map((v) => ({ value: v, label: v }));
+const SHIPS_IN_OPTIONS = [
+  { value: "preorder", label: "Pre-order" },
+  { value: "ready", label: "Ready to ship" },
+  { value: "28 - 35 Days", label: "28 - 35 Days" },
+  { value: "21 - 28 Days", label: "21 - 28 Days" },
+];
+const isPreorder = (text) => Boolean(text) && text.toLowerCase() !== "ready to ship";
 
 // TanStack column ids are the backend's ?ordering= keys / filter params (apps.orders.views).
 const COLUMNS = [
@@ -65,6 +72,7 @@ const COLUMNS = [
   { id: "status", header: "Status", size: 8, enableSorting: false, meta: { filterOptions: ORDER_STATUSES, filterParam: "status", filterMulti: true } },
   { id: "payment", header: "Payment", size: 10, enableSorting: false, meta: { filterOptions: PAYMENT_STATUSES, filterParam: "payment_status", filterMulti: true } },
   { id: "fulfillment", header: "Fulfillment", size: 11, enableSorting: false, meta: { filterOptions: FULFILLMENT_STATUSES, filterParam: "fulfillment_status", filterMulti: true } },
+  { id: "ships_in", header: "Ships in", size: 9, enableSorting: false, meta: { filterOptions: SHIPS_IN_OPTIONS, filterParam: "ships_in", filterMulti: true } },
   { id: "delivery", header: "Delivery", size: 8.5, enableSorting: false },
   { id: "destination", header: "Destination", size: 10.5, enableSorting: false },
 ];
@@ -104,11 +112,12 @@ function LineItemsRow({ orderId }) {
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-8 w-[42%] text-[0.65rem]">Product</TableHead>
-                  <TableHead className="h-8 w-[8%] text-center text-[0.65rem]">Qty</TableHead>
-                  <TableHead className="h-8 w-[12%] text-right text-[0.65rem]">Price</TableHead>
-                  <TableHead className="h-8 w-[22%] text-[0.65rem]">Unit</TableHead>
-                  <TableHead className="h-8 w-[16%] text-[0.65rem]">Fulfilled by</TableHead>
+                  <TableHead className="h-8 w-[36%] text-[0.65rem]">Product</TableHead>
+                  <TableHead className="h-8 w-[7%] text-center text-[0.65rem]">Qty</TableHead>
+                  <TableHead className="h-8 w-[11%] text-right text-[0.65rem]">Price</TableHead>
+                  <TableHead className="h-8 w-[20%] text-[0.65rem]">Unit</TableHead>
+                  <TableHead className="h-8 w-[12%] text-[0.65rem]">Ships in</TableHead>
+                  <TableHead className="h-8 w-[14%] text-[0.65rem]">Fulfilled by</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,6 +151,7 @@ function LineItemsRow({ orderId }) {
                         </StatusBadge>
                       )}
                     </TableCell>
+                    <TableCell className="text-xs">{removed || !li.ships_in ? "—" : li.ships_in}</TableCell>
                     <TableCell>{removed ? "—" : <FulfilledByBadge lineItem={li} />}</TableCell>
                   </TableRow>
                   );
@@ -366,6 +376,13 @@ export default function OrdersList() {
                       </TableCell>
                       <TableCell className="py-1">
                         <StatusBadge tone={fulfillmentTone(row.fulfillment_status)} className="status-chip--compact">{row.fulfillment_status}</StatusBadge>
+                      </TableCell>
+                      <TableCell className="py-1 text-xs">
+                        {isPreorder(row.ships_in) ? (
+                          <StatusBadge tone="pending" className="status-chip--compact">{row.ships_in}</StatusBadge>
+                        ) : (
+                          <span className="text-muted-foreground">{row.ships_in || "—"}</span>
+                        )}
                       </TableCell>
                       <TableCell className={"truncate py-1 text-xs" + strike} title={row.delivery_method || undefined}>{row.delivery_method || "—"}</TableCell>
                       <TableCell className={"truncate py-1 text-xs" + strike} title={destination || undefined}>{destination || "—"}</TableCell>

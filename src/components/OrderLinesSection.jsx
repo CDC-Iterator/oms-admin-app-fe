@@ -66,6 +66,7 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
         <LineProduct line={line} layout="card">
           {hasUnit && line.sku && renderUnit(line)}
           {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
+          {line.ships_in && line.ships_in.toLowerCase() !== "ready to ship" && <StatusBadge tone="pending">Ships in {line.ships_in}</StatusBadge>}
         </LineProduct>
         <div className="flex shrink-0 items-center gap-3 pt-1 text-sm tabular-nums">
           <span className="w-20 text-right text-muted-foreground">{inr(line.price)}</span>
