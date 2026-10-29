@@ -155,7 +155,7 @@ function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
   const [search, setSearch] = useState(undefined);
 
   const { data, isFetching } = useGetChannelProductsQuery(
-    { channel: target?.channelKey, search },
+    { channel: target?.channelKey, search, mapped: "false" }, // only variants not yet mapped
     { skip: !target }
   );
   const groups = useMemo(() => groupChannelProductsByProduct(data?.rows ?? []), [data]);
@@ -188,7 +188,7 @@ function ChannelMappingPicker({ target, onOpenChange, onMapped }) {
       isFetching={isFetching}
       groups={groups}
       onSelect={handleSelect}
-      emptyTitle="No synced products found"
+      emptyTitle="No unmapped products found"
       emptyDescription={`Run "Sync now" on Channel Products to pull the latest ${channelLabel} catalog.`}
       renderVariant={(row) => (
         <>
