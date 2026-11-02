@@ -41,6 +41,7 @@ const DIRECTIONS = [
 ];
 const STATUSES = [
   { value: "success", label: "Success" },
+  { value: "partial", label: "Partial success" },
   { value: "retrying", label: "Retrying" },
   { value: "failed", label: "Failed" },
 ];
@@ -100,7 +101,7 @@ const parseJson = (text) => {
   }
 };
 
-const OUTCOME_TONE = { sent: "success", failed: "danger" };
+const OUTCOME_TONE = { sent: "success", failed: "danger", skipped_no_item_code: "pending" };
 
 // What was POSTed to POS and how it answered, one block per attempt (SalesMaster, SalesDetails).
 function PosAttempts({ attempts }) {

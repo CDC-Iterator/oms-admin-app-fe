@@ -113,6 +113,7 @@ export function syncTone(status) {
     case "success":
       return "success";
     case "retrying":
+    case "partial":
       return "pending";
     case "failed":
       return "danger";
