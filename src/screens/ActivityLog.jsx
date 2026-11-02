@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { Activity, Loader2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -19,42 +19,27 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetActivityQuery, useGetActivityRowQuery } from "../api/services/activity.js";
+import { useGetResourceMetaQuery } from "../api/services/meta.js";
 import ViewFilterChips from "../components/ViewFilterChips.jsx";
 import { useMinimumLoading } from "../hooks/useMinimumLoading.js";
 import SavedViews from "../components/SavedViews.jsx";
 import { useSavedViewParams } from "../hooks/useSavedViewParams.js";
 import { useServerColumns } from "../hooks/useServerColumns.js";
 import { formatApiError } from "../lib/errors.js";
+import { columnsFromMeta } from "../lib/resourceMeta.js";
 import { syncTone } from "../lib/status.js";
 
 const PAGE_SIZE = 50;
 
-// SyncLog.Direction/Status/channel choices — apps.inventory.models, apps.channels.models.
-const CHANNELS = [
-  { value: "shopify", label: "Shopify" },
-  { value: "tatacliq", label: "TataCliq" },
-  { value: "pos", label: "POS" },
-];
-const DIRECTIONS = [
-  { value: "push", label: "Push" },
-  { value: "pull", label: "Pull" },
-];
-const STATUSES = [
-  { value: "success", label: "Success" },
-  { value: "partial", label: "Partial success" },
-  { value: "retrying", label: "Retrying" },
-  { value: "failed", label: "Failed" },
-];
-
-// TanStack column ids are the backend's ?ordering= keys / filter params (apps.inventory.views.SyncLogViewSet).
+// Column ids are the backend's ?ordering= keys; which ones sort or filter, and their choices, come from /api/meta/resources/activity/.
 const COLUMNS = [
-  { id: "channel", header: "Channel", size: 9, meta: { filterOptions: CHANNELS, filterParam: "channel" } },
-  { id: "direction", header: "Direction", size: 9, meta: { filterOptions: DIRECTIONS, filterParam: "direction" } },
+  { id: "channel", header: "Channel", size: 9 },
+  { id: "direction", header: "Direction", size: 9 },
   { id: "topic", header: "Topic", size: 20 },
-  { id: "summary", header: "Details", size: 22, enableSorting: false },
-  { id: "status", header: "Status", size: 10, meta: { filterOptions: STATUSES, filterParam: "status" } },
-  { id: "error", header: "Error", size: 14, enableSorting: false },
-  { id: "timestamp", header: "When", size: 16, meta: { filterDateRange: true, filterParam: "when" } },
+  { id: "summary", header: "Details", size: 22 },
+  { id: "status", header: "Status", size: 10 },
+  { id: "error", header: "Error", size: 14 },
+  { id: "timestamp", header: "When", size: 16 },
 ];
 const COLUMN_COUNT = COLUMNS.length;
 const DEFAULT_ORDERING = "-timestamp";
@@ -224,8 +209,10 @@ export default function ActivityLog() {
     setPage(1);
   };
 
+  const { data: meta } = useGetResourceMetaQuery("activity");
+  const columns = useMemo(() => columnsFromMeta(COLUMNS, meta), [meta]);
   const { table, orderingParam, filterParams, activeFilters, clearFilters } = useServerColumns({
-    columns: COLUMNS,
+    columns,
     defaultOrdering: DEFAULT_ORDERING,
   });
   const savedView = useSavedViewParams({ search, setSearch });
@@ -255,7 +242,7 @@ export default function ActivityLog() {
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <div className="relative min-w-48 flex-1">
           <Input
-            placeholder="Search topic or error…"
+            placeholder={meta?.search?.placeholder ?? "Search…"}
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pr-9"
