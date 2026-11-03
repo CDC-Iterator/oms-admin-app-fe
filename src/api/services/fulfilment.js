@@ -40,6 +40,10 @@ export const fulfilmentApi = omsApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }, "orders"],
     }),
+    // One merged PDF of up to 100 shipments' labels; the reply lists any skipped (no label), with their AWBs.
+    downloadShipmentLabels: builder.mutation({
+      query: (shipment_ids) => ({ url: "/api/orders/fulfillment-lines/labels/", method: "POST", body: { shipment_ids } }),
+    }),
     // A mutation, not a query: the signed file URL expires, so it is never cached.
     getShipmentLabelUrl: builder.mutation({
       query: ({ orderId, shipmentId }) => ({ url: `/api/orders/${orderId}/shipments/${shipmentId}/label/` }),
@@ -53,4 +57,5 @@ export const {
   useCreateManualShipmentMutation,
   useUpdateShipmentMutation,
   useGetShipmentLabelUrlMutation,
+  useDownloadShipmentLabelsMutation,
 } = fulfilmentApi;
