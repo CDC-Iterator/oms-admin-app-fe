@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { PackageCheck, Truck } from "lucide-react";
+import { Download, PackageCheck, Truck } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useGetInventoryLocationSummaryQuery } from "../api/services/inventory.js";
 import { useCreateManualShipmentMutation } from "../api/services/fulfilment.js";
 import { useBookFulfillmentLinesMutation, useGetFulfillmentLinesQuery } from "../api/services/orders.js";
+import { useBulkLabelDownload, useLabelDownload } from "../hooks/useLabelDownload.js";
 import { useToast } from "../hooks/useToast.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { canBookShipments } from "../lib/permissions.js";
@@ -170,6 +171,35 @@ export default function FulfillmentLines() {
   useEffect(() => {
     if (!bulkEnabled) setSelected(new Map());
   }, [bulkEnabled]);
+  // Every other stage lists packages already booked: tick the ones with a courier label and download them as one PDF.
+  const labelsEnabled = !bulkEnabled && (stage || READY) !== READY;
+  const checks = bulkEnabled || labelsEnabled;
+  const [labelSel, setLabelSel] = useState(() => new Map());
+  useEffect(() => {
+    setLabelSel(new Map());
+  }, [stage, labelsEnabled]);
+  const labelRows = rows.filter((r) => r.has_label && r.shipment_id);
+  const pageLabelsSelected = labelRows.length > 0 && labelRows.every((r) => labelSel.has(r.shipment_id));
+  const toggleLabel = (row) =>
+    setLabelSel((prev) => {
+      const next = new Map(prev);
+      if (next.has(row.shipment_id)) next.delete(row.shipment_id);
+      else next.set(row.shipment_id, row);
+      return next;
+    });
+  const toggleLabelPage = () =>
+    setLabelSel((prev) => {
+      const next = new Map(prev);
+      for (const r of labelRows) {
+        if (pageLabelsSelected) next.delete(r.shipment_id);
+        else next.set(r.shipment_id, r);
+      }
+      return next;
+    });
+  const { download: downloadLabels, downloading: downloadingLabels } = useBulkLabelDownload();
+  const { download: downloadOneLabel } = useLabelDownload();
+  const selectedCount = bulkEnabled ? selected.size : labelSel.size;
+  const clearSelection = () => (bulkEnabled ? setSelected(new Map()) : setLabelSel(new Map()));
   const [bookOpen, setBookOpen] = useState(false);
   const [courier, setCourier] = useState("shipway");
   const { showToast } = useToast();
@@ -267,47 +297,63 @@ export default function FulfillmentLines() {
         >
           <Table className="table-compact table-scroll [&_td]:py-1 [&_td]:text-xs [&_th]:h-10">
             <colgroup>
-              {(bulkEnabled ? COLUMN_WIDTHS : [COLUMN_WIDTHS[0] + COLUMN_WIDTHS[1], ...COLUMN_WIDTHS.slice(2)]).map((w, i) => (
+              {(checks ? COLUMN_WIDTHS : [COLUMN_WIDTHS[0] + COLUMN_WIDTHS[1], ...COLUMN_WIDTHS.slice(2)]).map((w, i) => (
                 <col key={i} style={{ width: `${w}%` }} />
               ))}
             </colgroup>
             <TableHeader>
-              {bulkEnabled && selected.size > 0 && (
+              {checks && selectedCount > 0 && (
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
                     <input
                       type="checkbox"
                       className="oms-checkbox mx-auto"
                       checked
-                      onChange={() => setSelected(new Map())}
+                      onChange={clearSelection}
                       aria-label="Clear selection"
                     />
                   </TableHead>
                   <TableHead colSpan={11} className="bg-muted/40 shadow-[inset_0_-1px_0_0_var(--border)]">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium">{selected.size} selected</span>
-                      {canBook && (
+                      <span className="text-sm font-medium">
+                        {selectedCount} selected
+                      </span>
+                      {bulkEnabled && canBook && (
                         <Button size="sm" variant="outline" onClick={() => setBookOpen(true)}>
                           <Truck className="size-3.5" />
                           Book shipments
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" onClick={() => setSelected(new Map())}>
+                      {labelsEnabled && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={downloadingLabels}
+                          onClick={async () => {
+                            if (await downloadLabels([...labelSel.keys()])) setLabelSel(new Map());
+                          }}
+                        >
+                          <Download className="size-3.5" />
+                          {downloadingLabels ? "Preparing…" : `Download ${selectedCount} label${selectedCount === 1 ? "" : "s"}`}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={clearSelection}>
                         Clear selection
                       </Button>
                     </div>
                   </TableHead>
                 </TableRow>
               )}
-              <TableRow className={bulkEnabled && selected.size > 0 ? "hidden" : "hover:bg-transparent"}>
-                {bulkEnabled && (
+              <TableRow className={checks && selectedCount > 0 ? "hidden" : "hover:bg-transparent"}>
+                {checks && (
                   <TableHead className="w-[3%] shadow-[inset_0_-1px_0_0_var(--border)]">
                     <input
                       type="checkbox"
                       className="oms-checkbox mx-auto"
-                      checked={pageSelected}
-                      onChange={togglePage}
-                      aria-label="Select all lines on this page"
+                      checked={bulkEnabled ? pageSelected : pageLabelsSelected}
+                      onChange={bulkEnabled ? togglePage : toggleLabelPage}
+                      disabled={labelsEnabled && labelRows.length === 0}
+                      aria-label={bulkEnabled ? "Select all lines on this page" : "Select all labels on this page"}
                     />
                   </TableHead>
                 )}
@@ -335,9 +381,22 @@ export default function FulfillmentLines() {
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
-              {rows.length === 0 && <TableEmptyRow colSpan={bulkEnabled ? 12 : 11} />}
+              {rows.length === 0 && <TableEmptyRow colSpan={checks ? 12 : 11} />}
               {rows.map((row) => (
-                <TableRow key={row.row_id ?? row.line_id} data-state={selected.has(row.line_id) ? "selected" : undefined}>
+                <TableRow key={row.row_id ?? row.line_id} data-state={selected.has(row.line_id) || labelSel.has(row.shipment_id) ? "selected" : undefined}>
+                  {labelsEnabled && (
+                    <TableCell>
+                      {row.has_label && row.shipment_id && (
+                        <input
+                          type="checkbox"
+                          className="oms-checkbox mx-auto"
+                          checked={labelSel.has(row.shipment_id)}
+                          onChange={() => toggleLabel(row)}
+                          aria-label={`Select label for ${row.order_name} ${row.tracking_number || ""}`}
+                        />
+                      )}
+                    </TableCell>
+                  )}
                   {bulkEnabled && (
                     <TableCell>
                       {row.stage === READY && (
@@ -381,6 +440,17 @@ export default function FulfillmentLines() {
                           ) : (
                             <span className="font-mono text-[11px] text-muted-foreground">{row.tracking_number}</span>
                           ))}
+                        {row.has_label && row.shipment_id && (
+                          <button
+                            type="button"
+                            onClick={() => downloadOneLabel({ id: row.shipment_id }, row.order_id)}
+                            className="ml-2 inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline"
+                            title="Download this shipment's label"
+                          >
+                            <Download className="size-3" />
+                            Label
+                          </button>
+                        )}
                       </div>
                     ) : (
                       "—"
