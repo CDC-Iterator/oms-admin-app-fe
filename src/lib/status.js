@@ -112,6 +112,7 @@ export function syncTone(status) {
   switch ((status || "").toLowerCase()) {
     case "success":
       return "success";
+    case "pending":
     case "retrying":
     case "partial":
       return "pending";
