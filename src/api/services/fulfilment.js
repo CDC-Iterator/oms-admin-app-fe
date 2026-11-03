@@ -40,6 +40,10 @@ export const fulfilmentApi = omsApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }, "orders"],
     }),
+    // A mutation, not a query: the signed file URL expires, so it is never cached.
+    getShipmentLabelUrl: builder.mutation({
+      query: ({ orderId, shipmentId }) => ({ url: `/api/orders/${orderId}/shipments/${shipmentId}/label/` }),
+    }),
   }),
 });
 
@@ -48,4 +52,5 @@ export const {
   useCreateShipmentMutation,
   useCreateManualShipmentMutation,
   useUpdateShipmentMutation,
+  useGetShipmentLabelUrlMutation,
 } = fulfilmentApi;
