@@ -1,8 +1,9 @@
-import { Ban, MapPin, MoreHorizontal, Package, PackageCheck, PackageOpen, Pencil, Plus, Truck, Undo2 } from "lucide-react";
+import { Ban, Download, MapPin, MoreHorizontal, Package, PackageCheck, PackageOpen, Pencil, Plus, Truck, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.jsx";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
+import { useLabelDownload } from "../hooks/useLabelDownload.js";
 import { shipmentTone } from "../lib/status.js";
 import { LineProduct } from "./LineProduct.jsx";
 
@@ -126,6 +127,7 @@ export function OrderLinesSection({
   trackingEventLabels,
 }) {
   const orderName = order.order_name || order.external_order_id;
+  const { download: downloadLabel, downloading } = useLabelDownload(orderId);
   let shipmentNumber = 0;
   return (
     <section className="space-y-3">
@@ -199,6 +201,12 @@ export function OrderLinesSection({
                 >
                   <Plus className="size-3.5" />
                   Book Shipment
+                </Button>
+              )}
+              {shipment?.has_label && (
+                <Button variant="outline" size="sm" disabled={downloading} onClick={() => downloadLabel(shipment)}>
+                  <Download className="size-3.5" />
+                  Label
                 </Button>
               )}
               {isManual && canShip && shipment && (
