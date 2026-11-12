@@ -156,7 +156,15 @@ export default function FulfillmentLines() {
       else next.set(row.line_id, row);
       return next;
     });
-  const selectable = rows.filter((r) => r.stage === (reconcileEnabled ? AWAITING : READY));
+  const { user } = useAuth();
+  const canBook = canBookShipments(user);
+  // The checkbox column exists only on the Ready to ship view, and only for someone who can book.
+  const bulkEnabled = canBook && (stage || READY) === READY;
+  // Lines waiting for a unit can be reconciled once their SKU is fixed in Shopify.
+  const reconcileEnabled = canBook && stage === AWAITING;
+  const selectEnabled = bulkEnabled || reconcileEnabled;
+  const selectableStage = reconcileEnabled ? AWAITING : READY;
+  const selectable = rows.filter((r) => r.stage === selectableStage);
   const pageSelected = selectable.length > 0 && selectable.every((r) => selected.has(r.line_id));
   const togglePage = () =>
     setSelected((prev) => {
@@ -168,14 +176,6 @@ export default function FulfillmentLines() {
       return next;
     });
 
-  const { user } = useAuth();
-  const canBook = canBookShipments(user);
-  // The checkbox column exists only on the Ready to ship view, and only for someone who can book.
-  const bulkEnabled = canBook && (stage || READY) === READY;
-  // Lines waiting for a unit can be reconciled once their SKU is fixed in Shopify.
-  const reconcileEnabled = canBook && stage === AWAITING;
-  const selectEnabled = bulkEnabled || reconcileEnabled;
-  const selectableStage = reconcileEnabled ? AWAITING : READY;
   useEffect(() => {
     if (!selectEnabled) setSelected(new Map());
   }, [selectEnabled, stage]);
