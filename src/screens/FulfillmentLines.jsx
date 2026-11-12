@@ -35,6 +35,7 @@ const COLUMN_WIDTHS = [3, 19, 8, 8, 9, 3, 8, 12, 8, 9, 7, 6];
 // LineFulfillment.Stage — apps.orders.models. `all` (the "All" tab) turns the stage filter off.
 const STAGES = [
   { value: "ready_to_ship", label: "Ready to ship" },
+  { value: "packed", label: "Packed" },
   { value: "dispatched", label: "Dispatched" },
   { value: "in_transit", label: "In transit" },
   { value: "delivered", label: "Delivered" },
@@ -44,7 +45,7 @@ const STAGES = [
   { value: "vendor", label: "Vendor fulfilled" },
   { value: "untracked", label: "Shipped, no tracking" },
 ];
-const STAGE_TONE = { ready_to_ship: "pending", dispatched: "info", in_transit: "info", delivered: "success", rto: "danger" };
+const STAGE_TONE = { ready_to_ship: "pending", packed: "pending", dispatched: "info", in_transit: "info", delivered: "success", rto: "danger" };
 const ALL_PARAMS = { stage: "all" };
 const READY = "ready_to_ship";
 const COURIERS = [
@@ -137,6 +138,7 @@ export default function FulfillmentLines() {
     ...filterParams,
     stage: stage || READY,
     invoice: searchParams.get("invoice") || undefined,
+    pos_push: searchParams.get("pos_push") || undefined,
     waiting_hours: searchParams.get("waiting_hours") || undefined,
     ordering: orderingParam,
   });

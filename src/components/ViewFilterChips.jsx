@@ -13,6 +13,7 @@ const LABELS = {
   unit_status: (v) => (v === "none" ? "No unit available" : `Unit ${v}`),
   invoice: (v) => (v === "missing" ? "No POS invoice yet" : `Invoice ${v}`),
   dropship: (v) => (v === "true" ? "ShipTurtle (dropship)" : "Not dropship"),
+  pos_push: (v) => (v === "not_sent" ? "Not sent to POS" : `POS push: ${v}`),
   pos_eligible: () => "POS-processable",
   topic: (v) => `Topic: ${v}`,
 };
