@@ -1,4 +1,4 @@
-import { Ban, Download, MapPin, MoreHorizontal, Package, PackageCheck, PackageOpen, Pencil, Plus, Truck, Undo2 } from "lucide-react";
+import { Ban, Download, MapPin, Receipt, MoreHorizontal, Package, PackageCheck, PackageOpen, Pencil, Plus, Truck, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.jsx";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.jsx";
@@ -181,6 +181,7 @@ export function OrderLinesSection({
           : unitLocations.length > 0
             ? unitLocations
             : [order.allocated_location];
+        const invoices = [...new Set(group.entries.flatMap((e) => (e.line.invoice_id ?? "").split(",").map((v) => v.trim()).filter(Boolean)))];
         const chipStatus = channel ? channel.shipment_status : ref?.status === "created" ? bookedLabel : ref?.status;
         const chipLabel = channel ? channel.shipment_status?.replace(/_/g, " ") : trackingLabel;
 
@@ -246,6 +247,12 @@ export function OrderLinesSection({
                       ) : (
                         <span className="font-mono text-foreground">{awb}</span>
                       )}
+                    </p>
+                  )}
+                  {(ref || channel) && invoices.length > 0 && (
+                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Receipt className="size-4" />
+                      Invoice: <span className="font-mono text-foreground">{invoices.join(", ")}</span>
                     </p>
                   )}
                 </div>
