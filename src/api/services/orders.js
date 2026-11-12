@@ -23,6 +23,11 @@ export const ordersApi = omsApi.injectEndpoints({
       query: (body) => ({ url: "/api/orders/fulfillment-lines/book/", method: "POST", body }),
       invalidatesTags: ["orders"],
     }),
+    // Links lines whose Shopify SKU was fixed, suggests their units and (optionally) queues what POS hasn't had yet.
+    reconcileOrders: builder.mutation({
+      query: (body) => ({ url: "/api/orders/reconcile/", method: "POST", body }),
+      invalidatesTags: ["orders"],
+    }),
     getOrder: builder.query({
       query: (id) => ({ url: `/api/orders/${id}/` }),
       providesTags: ["orders"],
@@ -73,6 +78,7 @@ export const ordersApi = omsApi.injectEndpoints({
 export const {
   useGetOrdersQuery,
   useBookFulfillmentLinesMutation,
+  useReconcileOrdersMutation,
   useGetFulfillmentLinesQuery,
   useGetOrderQuery,
   useGetOrderStatusSummaryQuery,

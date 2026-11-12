@@ -27,6 +27,7 @@ import { PaymentSummaryCard } from "../components/PaymentSummaryCard.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { LineActionDialog } from "@/components/LineActionDialog.jsx";
 import { LineActionsCard } from "@/components/LineActionsCard.jsx";
+import { ShippingDetailsCard } from "../components/ShippingDetailsCard.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { canBookShipments, isAdminUser } from "../lib/permissions.js";
 import { useToast } from "../hooks/useToast.js";
@@ -193,7 +194,19 @@ function SuggestedUnitCell({ orderId, orderStatus, lineItem }) {
   if (fullyConfirmed) {
     const locations = lineItem.confirmed_unit_locations ?? [];
     const label = confirmedUnits.map((barcode, i) => (locations[i] ? `${barcode} @ ${locations[i]}` : barcode)).join(", ");
-    return <StatusBadge tone="success">Confirmed · {label}</StatusBadge>;
+    // A different unit than the one we suggested was sold at POS — keep what was suggested visible.
+    const wasSuggested = lineItem.suggested_barcode && !confirmedUnits.includes(lineItem.suggested_barcode);
+    return (
+      <>
+        <StatusBadge tone="success">Reserved · {label}</StatusBadge>
+        {wasSuggested && (
+          <StatusBadge tone="neutral">
+            Suggested was {lineItem.suggested_barcode}
+            {lineItem.suggested_location ? ` @ ${lineItem.suggested_location}` : ""}
+          </StatusBadge>
+        )}
+      </>
+    );
   }
   if (!showSuggestion) {
     return <span className="text-xs text-muted-foreground">No unit assigned</span>;
@@ -721,6 +734,8 @@ export default function OrderDetail() {
                 </dl>
               </CardContent>
             </Card>
+
+            <ShippingDetailsCard order={order} shipments={shipments} />
           </div>
         </div>
       )}

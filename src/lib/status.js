@@ -98,7 +98,10 @@ export function shipmentTone(status) {
       return "success";
     case "created":
     case "in_transit":
+    case "packed":
       return "pending";
+    case "dispatched":
+      return "info";
     case "rto":
     case "cancelled":
       return "danger";

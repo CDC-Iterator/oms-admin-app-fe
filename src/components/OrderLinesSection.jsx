@@ -1,10 +1,11 @@
-import { Ban, Download, MapPin, MoreHorizontal, Package, PackageCheck, PackageOpen, Pencil, Plus, Truck, Undo2 } from "lucide-react";
+import { Ban, Download, MapPin, Receipt, MoreHorizontal, Package, PackageCheck, PackageOpen, Pencil, Plus, Truck, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.jsx";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { useLabelDownload } from "../hooks/useLabelDownload.js";
 import { shipmentTone } from "../lib/status.js";
+import { BundleParts } from "./BundleParts.jsx";
 import { LineProduct } from "./LineProduct.jsx";
 
 const inr = (value) =>
@@ -65,7 +66,8 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
             <span className="size-4 shrink-0" aria-hidden />
           ))}
         <LineProduct line={line} layout="card">
-          {hasUnit && line.sku && renderUnit(line)}
+          {line.is_bundle && <StatusBadge tone="neutral">Bundle</StatusBadge>}
+          {line.is_bundle ? <BundleParts line={line} /> : (hasUnit || line.is_fully_confirmed) && line.sku && renderUnit(line)}
           {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
           {line.ships_in && line.ships_in.toLowerCase() !== "ready to ship" && <StatusBadge tone="pending">Ships in {line.ships_in}</StatusBadge>}
         </LineProduct>
@@ -164,10 +166,11 @@ export function OrderLinesSection({
         const shipment = ref ? shipmentById.get(ref.id) : null;
         if (ref) shipmentNumber += 1;
         const isManual = ref?.courier === "manual";
+        // A booked shipment still "created" reads Packed (label ready) or Dispatched (handed to the courier).
+        const bookedLabel = shipment?.dispatched_at ? "dispatched" : shipment?.has_label ? "packed" : "booked";
         const trackingLabel =
-          (shipment?.last_reported_tracking_event_status &&
-            trackingEventLabels[shipment.last_reported_tracking_event_status]) ??
-          ref?.status?.replace(/_/g, " ");
+          (shipment?.last_reported_tracking_event_status && trackingEventLabels[shipment.last_reported_tracking_event_status]) ||
+          (ref?.status === "created" ? bookedLabel : ref?.status?.replace(/_/g, " "));
         const eventDate = channel ? channel.created_at : shipment?.last_reported_tracking_event_at || shipment?.created_at;
         const carrier = channel ? channel.carrier : ref?.carrier_name || ref?.courier;
         const awb = channel ? channel.tracking_number : shipment?.awb_number;
@@ -179,7 +182,8 @@ export function OrderLinesSection({
           : unitLocations.length > 0
             ? unitLocations
             : [order.allocated_location];
-        const chipStatus = channel ? channel.shipment_status : ref?.status;
+        const invoices = [...new Set(group.entries.flatMap((e) => (e.line.invoice_id ?? "").split(",").map((v) => v.trim()).filter(Boolean)))];
+        const chipStatus = channel ? channel.shipment_status : ref?.status === "created" ? bookedLabel : ref?.status;
         const chipLabel = channel ? channel.shipment_status?.replace(/_/g, " ") : trackingLabel;
 
         return (
@@ -244,6 +248,12 @@ export function OrderLinesSection({
                       ) : (
                         <span className="font-mono text-foreground">{awb}</span>
                       )}
+                    </p>
+                  )}
+                  {(ref || channel) && invoices.length > 0 && (
+                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Receipt className="size-4" />
+                      Invoice: <span className="font-mono text-foreground">{invoices.join(", ")}</span>
                     </p>
                   )}
                 </div>
