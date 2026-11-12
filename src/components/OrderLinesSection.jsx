@@ -165,10 +165,11 @@ export function OrderLinesSection({
         const shipment = ref ? shipmentById.get(ref.id) : null;
         if (ref) shipmentNumber += 1;
         const isManual = ref?.courier === "manual";
+        // A booked shipment still "created" reads Packed (label ready) or Dispatched (handed to the courier).
+        const bookedLabel = shipment?.dispatched_at ? "dispatched" : shipment?.has_label ? "packed" : "booked";
         const trackingLabel =
-          (shipment?.last_reported_tracking_event_status &&
-            trackingEventLabels[shipment.last_reported_tracking_event_status]) ??
-          ref?.status?.replace(/_/g, " ");
+          (shipment?.last_reported_tracking_event_status && trackingEventLabels[shipment.last_reported_tracking_event_status]) ||
+          (ref?.status === "created" ? bookedLabel : ref?.status?.replace(/_/g, " "));
         const eventDate = channel ? channel.created_at : shipment?.last_reported_tracking_event_at || shipment?.created_at;
         const carrier = channel ? channel.carrier : ref?.carrier_name || ref?.courier;
         const awb = channel ? channel.tracking_number : shipment?.awb_number;
@@ -180,7 +181,7 @@ export function OrderLinesSection({
           : unitLocations.length > 0
             ? unitLocations
             : [order.allocated_location];
-        const chipStatus = channel ? channel.shipment_status : ref?.status;
+        const chipStatus = channel ? channel.shipment_status : ref?.status === "created" ? bookedLabel : ref?.status;
         const chipLabel = channel ? channel.shipment_status?.replace(/_/g, " ") : trackingLabel;
 
         return (
