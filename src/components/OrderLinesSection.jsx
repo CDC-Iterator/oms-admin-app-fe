@@ -65,7 +65,8 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
             <span className="size-4 shrink-0" aria-hidden />
           ))}
         <LineProduct line={line} layout="card">
-          {(hasUnit || line.is_fully_confirmed) && line.sku && renderUnit(line)}
+          {line.is_bundle && <StatusBadge tone="neutral">Bundle</StatusBadge>}
+          {(hasUnit || line.is_fully_confirmed) && (line.sku || line.is_bundle) && renderUnit(line)}
           {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
           {line.ships_in && line.ships_in.toLowerCase() !== "ready to ship" && <StatusBadge tone="pending">Ships in {line.ships_in}</StatusBadge>}
         </LineProduct>
