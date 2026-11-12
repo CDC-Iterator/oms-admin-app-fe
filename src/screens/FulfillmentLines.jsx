@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, PackageCheck, Truck } from "lucide-react";
+import { Download, PackageCheck, Send, Truck } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
@@ -16,7 +16,7 @@ import { Select } from "@/components/ui/select.jsx";
 import { Skeleton } from "@/components/ui/skeleton.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import { useGetInventoryLocationSummaryQuery } from "../api/services/inventory.js";
-import { useCreateManualShipmentMutation } from "../api/services/fulfilment.js";
+import { useCreateManualShipmentMutation, useDispatchShipmentsMutation } from "../api/services/fulfilment.js";
 import { useBookFulfillmentLinesMutation, useGetFulfillmentLinesQuery } from "../api/services/orders.js";
 import { useBulkLabelDownload, useLabelDownload } from "../hooks/useLabelDownload.js";
 import { useToast } from "../hooks/useToast.js";
@@ -200,6 +200,16 @@ export default function FulfillmentLines() {
     });
   const { download: downloadLabels, downloading: downloadingLabels } = useBulkLabelDownload();
   const { download: downloadOneLabel } = useLabelDownload();
+  const [dispatchShipments, { isLoading: dispatching }] = useDispatchShipmentsMutation();
+  const markDispatched = async () => {
+    try {
+      const { dispatched, skipped } = await dispatchShipments([...labelSel.keys()]).unwrap();
+      showToast(`${dispatched.length} shipment${dispatched.length === 1 ? "" : "s"} marked dispatched.${skipped.length ? ` ${skipped.length} skipped.` : ""}`);
+      setLabelSel(new Map());
+    } catch (err) {
+      showToast(formatApiError(err));
+    }
+  };
   const selectedCount = bulkEnabled ? selected.size : labelSel.size;
   const clearSelection = () => (bulkEnabled ? setSelected(new Map()) : setLabelSel(new Map()));
   const [bookOpen, setBookOpen] = useState(false);
@@ -337,6 +347,12 @@ export default function FulfillmentLines() {
                         >
                           <Download className="size-3.5" />
                           {downloadingLabels ? "Preparing…" : `Download ${selectedCount} label${selectedCount === 1 ? "" : "s"}`}
+                        </Button>
+                      )}
+                      {labelsEnabled && stage === "packed" && canBook && (
+                        <Button size="sm" variant="outline" disabled={dispatching} onClick={markDispatched}>
+                          <Send className="size-3.5" />
+                          {dispatching ? "Saving…" : "Mark dispatched"}
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" onClick={clearSelection}>

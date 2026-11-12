@@ -44,6 +44,11 @@ export const fulfilmentApi = omsApi.injectEndpoints({
     downloadShipmentLabels: builder.mutation({
       query: (shipment_ids) => ({ url: "/api/orders/fulfillment-lines/labels/", method: "POST", body: { shipment_ids } }),
     }),
+    // Packed -> Dispatched: the warehouse has handed these parcels to the courier.
+    dispatchShipments: builder.mutation({
+      query: (shipment_ids) => ({ url: "/api/orders/fulfillment-lines/dispatch/", method: "POST", body: { shipment_ids } }),
+      invalidatesTags: ["orders", "shipments"],
+    }),
     // A mutation, not a query: the signed file URL expires, so it is never cached.
     getShipmentLabelUrl: builder.mutation({
       query: ({ orderId, shipmentId }) => ({ url: `/api/orders/${orderId}/shipments/${shipmentId}/label/` }),
@@ -58,4 +63,5 @@ export const {
   useUpdateShipmentMutation,
   useGetShipmentLabelUrlMutation,
   useDownloadShipmentLabelsMutation,
+  useDispatchShipmentsMutation,
 } = fulfilmentApi;

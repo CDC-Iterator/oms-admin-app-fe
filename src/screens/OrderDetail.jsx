@@ -27,6 +27,7 @@ import { PaymentSummaryCard } from "../components/PaymentSummaryCard.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { LineActionDialog } from "@/components/LineActionDialog.jsx";
 import { LineActionsCard } from "@/components/LineActionsCard.jsx";
+import { ShippingDetailsCard } from "../components/ShippingDetailsCard.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { canBookShipments, isAdminUser } from "../lib/permissions.js";
 import { useToast } from "../hooks/useToast.js";
@@ -721,6 +722,8 @@ export default function OrderDetail() {
                 </dl>
               </CardContent>
             </Card>
+
+            <ShippingDetailsCard order={order} shipments={shipments} />
           </div>
         </div>
       )}
