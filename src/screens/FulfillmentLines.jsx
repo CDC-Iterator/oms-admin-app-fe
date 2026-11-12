@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, PackageCheck, Send, Truck } from "lucide-react";
+import { Download, PackageCheck, RefreshCw, Send, Truck } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { ColumnHeader } from "../components/ColumnHeader.jsx";
 import { EmptyState } from "../components/empty-state.jsx";
 import { TableEmptyRow } from "../components/TableEmptyRow.jsx";
 import { LineProduct } from "../components/LineProduct.jsx";
+import { ReconcileDialog } from "../components/ReconcileDialog.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
@@ -48,6 +49,7 @@ const STAGES = [
 const STAGE_TONE = { ready_to_ship: "pending", packed: "pending", dispatched: "info", in_transit: "info", delivered: "success", rto: "danger" };
 const ALL_PARAMS = { stage: "all" };
 const READY = "ready_to_ship";
+const AWAITING = "awaiting_unit";
 const COURIERS = [
   { value: "shipway", label: "Shipway" },
   { value: "shipdelight", label: "Shipdelight" },
@@ -154,7 +156,7 @@ export default function FulfillmentLines() {
       else next.set(row.line_id, row);
       return next;
     });
-  const selectable = rows.filter((r) => r.stage === READY);
+  const selectable = rows.filter((r) => r.stage === (reconcileEnabled ? AWAITING : READY));
   const pageSelected = selectable.length > 0 && selectable.every((r) => selected.has(r.line_id));
   const togglePage = () =>
     setSelected((prev) => {
@@ -170,12 +172,16 @@ export default function FulfillmentLines() {
   const canBook = canBookShipments(user);
   // The checkbox column exists only on the Ready to ship view, and only for someone who can book.
   const bulkEnabled = canBook && (stage || READY) === READY;
+  // Lines waiting for a unit can be reconciled once their SKU is fixed in Shopify.
+  const reconcileEnabled = canBook && stage === AWAITING;
+  const selectEnabled = bulkEnabled || reconcileEnabled;
+  const selectableStage = reconcileEnabled ? AWAITING : READY;
   useEffect(() => {
-    if (!bulkEnabled) setSelected(new Map());
-  }, [bulkEnabled]);
+    if (!selectEnabled) setSelected(new Map());
+  }, [selectEnabled, stage]);
   // Every other stage lists packages already booked: tick the ones with a courier label and download them as one PDF.
-  const labelsEnabled = !bulkEnabled && (stage || READY) !== READY;
-  const checks = bulkEnabled || labelsEnabled;
+  const labelsEnabled = !selectEnabled && (stage || READY) !== READY && stage !== AWAITING;
+  const checks = selectEnabled || labelsEnabled;
   const [labelSel, setLabelSel] = useState(() => new Map());
   useEffect(() => {
     setLabelSel(new Map());
@@ -210,9 +216,10 @@ export default function FulfillmentLines() {
       showToast(formatApiError(err));
     }
   };
-  const selectedCount = bulkEnabled ? selected.size : labelSel.size;
-  const clearSelection = () => (bulkEnabled ? setSelected(new Map()) : setLabelSel(new Map()));
+  const selectedCount = selectEnabled ? selected.size : labelSel.size;
+  const clearSelection = () => (selectEnabled ? setSelected(new Map()) : setLabelSel(new Map()));
   const [bookOpen, setBookOpen] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
   const [courier, setCourier] = useState("shipway");
   const { showToast } = useToast();
   const [createManual, { isLoading: bookingManual, error: manualError }] = useCreateManualShipmentMutation();
@@ -281,7 +288,13 @@ export default function FulfillmentLines() {
           }}
           className="min-w-48 flex-1"
         />
-        <ViewFilterChips table={table} onClear={clearFilters} keys={["invoice", "waiting_hours"]} />
+        {canBook && stage === AWAITING && (
+          <Button size="sm" variant="outline" onClick={() => setReconcileOpen(true)}>
+            <RefreshCw className="size-3.5" />
+            Reconcile orders…
+          </Button>
+        )}
+        <ViewFilterChips table={table} onClear={clearFilters} keys={["invoice", "waiting_hours", "pos_push"]} />
         <SavedViews resource="fulfillments" params={savedView.params} onApply={savedView.applyKeepingSearch} useCount={useViewCount} ignoreParams={["search"]} allParams={ALL_PARAMS} />
       </div>
 
@@ -336,6 +349,12 @@ export default function FulfillmentLines() {
                           Book shipments
                         </Button>
                       )}
+                      {reconcileEnabled && (
+                        <Button size="sm" variant="outline" onClick={() => setReconcileOpen(true)}>
+                          <RefreshCw className="size-3.5" />
+                          Reconcile {orderCount} order{orderCount === 1 ? "" : "s"}
+                        </Button>
+                      )}
                       {labelsEnabled && (
                         <Button
                           size="sm"
@@ -368,10 +387,10 @@ export default function FulfillmentLines() {
                     <input
                       type="checkbox"
                       className="oms-checkbox mx-auto"
-                      checked={bulkEnabled ? pageSelected : pageLabelsSelected}
-                      onChange={bulkEnabled ? togglePage : toggleLabelPage}
+                      checked={selectEnabled ? pageSelected : pageLabelsSelected}
+                      onChange={selectEnabled ? togglePage : toggleLabelPage}
                       disabled={labelsEnabled && labelRows.length === 0}
-                      aria-label={bulkEnabled ? "Select all lines on this page" : "Select all labels on this page"}
+                      aria-label={selectEnabled ? "Select all lines on this page" : "Select all labels on this page"}
                     />
                   </TableHead>
                 )}
@@ -415,9 +434,9 @@ export default function FulfillmentLines() {
                       )}
                     </TableCell>
                   )}
-                  {bulkEnabled && (
+                  {selectEnabled && (
                     <TableCell>
-                      {row.stage === READY && (
+                      {row.stage === selectableStage && (
                         <input
                           type="checkbox"
                           className="oms-checkbox mx-auto"
@@ -430,6 +449,11 @@ export default function FulfillmentLines() {
                   )}
                   <TableCell>
                     <LineProduct line={row} layout="card" dense>
+                      {row.stage === AWAITING && !row.pos_sent && (
+                        <StatusBadge tone={row.item_code || row.bundle ? "pending" : "danger"} className="status-chip--compact">
+                          {row.item_code || row.bundle ? "Linked · not sent to POS" : "SKU not in catalog"}
+                        </StatusBadge>
+                      )}
                       {row.bundle && (
                         <StatusBadge tone={row.bundle.split.length > 0 ? "danger" : row.bundle.billed >= row.bundle.parts ? "success" : "pending"} className="status-chip--compact">
                           Bundle · {row.bundle.billed} of {row.bundle.parts} parts
@@ -515,6 +539,15 @@ export default function FulfillmentLines() {
       <div className="shrink-0">
         <Pagination page={page} pageSize={PAGE_SIZE} count={data?.count ?? 0} onPageChange={setPage} loading={isFetching} />
       </div>
+
+      <ReconcileDialog
+        open={reconcileOpen}
+        onOpenChange={(open) => {
+          setReconcileOpen(open);
+          if (!open) setSelected(new Map());
+        }}
+        initialOrders={[...new Set([...selected.values()].map((r) => r.order_name))].join(", ")}
+      />
 
       <Dialog open={bookOpen} onOpenChange={(open) => (open ? setBookOpen(true) : closeBook())}>
         <DialogContent className="flex max-h-[80vh] w-full max-w-lg flex-col gap-3 sm:max-w-lg">
