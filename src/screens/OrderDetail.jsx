@@ -194,7 +194,19 @@ function SuggestedUnitCell({ orderId, orderStatus, lineItem }) {
   if (fullyConfirmed) {
     const locations = lineItem.confirmed_unit_locations ?? [];
     const label = confirmedUnits.map((barcode, i) => (locations[i] ? `${barcode} @ ${locations[i]}` : barcode)).join(", ");
-    return <StatusBadge tone="success">Confirmed · {label}</StatusBadge>;
+    // A different unit than the one we suggested was sold at POS — keep what was suggested visible.
+    const wasSuggested = lineItem.suggested_barcode && !confirmedUnits.includes(lineItem.suggested_barcode);
+    return (
+      <>
+        <StatusBadge tone="success">Reserved · {label}</StatusBadge>
+        {wasSuggested && (
+          <StatusBadge tone="neutral">
+            Suggested was {lineItem.suggested_barcode}
+            {lineItem.suggested_location ? ` @ ${lineItem.suggested_location}` : ""}
+          </StatusBadge>
+        )}
+      </>
+    );
   }
   if (!showSuggestion) {
     return <span className="text-xs text-muted-foreground">No unit assigned</span>;
