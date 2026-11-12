@@ -429,7 +429,14 @@ export default function FulfillmentLines() {
                     </TableCell>
                   )}
                   <TableCell>
-                    <LineProduct line={row} layout="card" dense />
+                    <LineProduct line={row} layout="card" dense>
+                      {row.bundle && (
+                        <StatusBadge tone={row.bundle.split.length > 0 ? "danger" : row.bundle.billed >= row.bundle.parts ? "success" : "pending"} className="status-chip--compact">
+                          Bundle · {row.bundle.billed} of {row.bundle.parts} parts
+                          {row.bundle.split.length > 0 ? ` · split: ${row.bundle.split.join(" + ")}` : ""}
+                        </StatusBadge>
+                      )}
+                    </LineProduct>
                   </TableCell>
                   <TableCell className="font-mono">
                     <Link to={`/orders/${row.order_id}`} state={{ from: location.pathname + location.search, search }} className="text-primary hover:underline" title={row.customer_name}>

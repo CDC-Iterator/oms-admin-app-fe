@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { StatusBadge } from "@/components/status-badge.jsx";
 import { useLabelDownload } from "../hooks/useLabelDownload.js";
 import { shipmentTone } from "../lib/status.js";
+import { BundleParts } from "./BundleParts.jsx";
 import { LineProduct } from "./LineProduct.jsx";
 
 const inr = (value) =>
@@ -66,7 +67,7 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
           ))}
         <LineProduct line={line} layout="card">
           {line.is_bundle && <StatusBadge tone="neutral">Bundle</StatusBadge>}
-          {(hasUnit || line.is_fully_confirmed) && (line.sku || line.is_bundle) && renderUnit(line)}
+          {line.is_bundle ? <BundleParts line={line} /> : (hasUnit || line.is_fully_confirmed) && line.sku && renderUnit(line)}
           {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
           {line.ships_in && line.ships_in.toLowerCase() !== "ready to ship" && <StatusBadge tone="pending">Ships in {line.ships_in}</StatusBadge>}
         </LineProduct>
