@@ -51,7 +51,6 @@ const ALL_PARAMS = { stage: "all" };
 const READY = "ready_to_ship";
 const AWAITING = "awaiting_unit";
 const COURIERS = [
-  { value: "shipway:automatic", label: "Shipway · Automatic" },
   { value: "shipway:delhivery", label: "Shipway · Delhivery" },
   { value: "shipway:bluedart", label: "Shipway · Bluedart" },
   { value: "shipdelight", label: "Shipdelight" },
@@ -222,7 +221,7 @@ export default function FulfillmentLines() {
   const clearSelection = () => (selectEnabled ? setSelected(new Map()) : setLabelSel(new Map()));
   const [bookOpen, setBookOpen] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
-  const [courier, setCourier] = useState("shipway:automatic");
+  const [courier, setCourier] = useState("shipway:delhivery");
   const { showToast } = useToast();
   const [createManual, { isLoading: bookingManual, error: manualError }] = useCreateManualShipmentMutation();
   const [carrier, setCarrier] = useState(MANUAL_CARRIERS[0]);
