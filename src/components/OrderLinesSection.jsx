@@ -66,6 +66,15 @@ function LineRow({ entry, group, orderId, isAdmin, checkboxColumn, showCheckbox,
             <span className="size-4 shrink-0" aria-hidden />
           ))}
         <LineProduct line={line} layout="card">
+          {line.channel_slave && (
+            <StatusBadge tone="info">
+              TataCliq slave {line.channel_slave.slave}
+              {line.channel_slave.locations.length > 0 ? ` → ${line.channel_slave.locations.join(" + ")}` : ""}
+            </StatusBadge>
+          )}
+          {line.channel_slave && line.sku && (line.suggested_units ?? []).length + (line.confirmed_units ?? []).length === 0 && (
+            <StatusBadge tone="danger">No unit at {line.channel_slave.locations.join(" / ") || line.channel_slave.slave}</StatusBadge>
+          )}
           {line.is_bundle && <StatusBadge tone="neutral">Bundle</StatusBadge>}
           {line.is_bundle ? <BundleParts line={line} /> : (hasUnit || line.is_fully_confirmed) && line.sku && renderUnit(line)}
           {line.is_dropship && <StatusBadge tone="pending">Shipturtle</StatusBadge>}
