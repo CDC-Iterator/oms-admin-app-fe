@@ -17,8 +17,8 @@ const LINE = {
 const POS = {
   queued: ["success", "Sent to POS (queued)"],
   ready_not_sent: ["pending", "Ready — not sent"],
-  needs_pos_confirmation: ["pending", "POS already has part of this order — waiting for POS to confirm a second send"],
-  nothing_to_send: ["neutral", "Nothing to send to POS"],
+  needs_pos_confirmation: ["pending", "POS already has part of this order — sending only the missing lines is switched off"],
+  nothing_to_send: ["neutral", "Nothing to send — POS already has or billed every line"],
 };
 
 // Paste Shopify order names or ids; each is linked to the catalog, gets units suggested and (optionally) goes to POS.

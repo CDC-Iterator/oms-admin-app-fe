@@ -449,7 +449,14 @@ export default function FulfillmentLines() {
                   )}
                   <TableCell>
                     <LineProduct line={row} layout="card" dense>
-                      {row.stage === AWAITING && !row.pos_sent && (
+                      {row.stage === AWAITING && !row.pos_sent && row.pos_error && (
+                        <span title={row.pos_error.reason || undefined}>
+                          <StatusBadge tone="danger" className="status-chip--compact">
+                            POS rejected {row.pos_error.http_status ? `(HTTP ${row.pos_error.http_status})` : "(unreachable)"}
+                          </StatusBadge>
+                        </span>
+                      )}
+                      {row.stage === AWAITING && !row.pos_sent && !row.pos_error && (
                         <StatusBadge tone={row.item_code || row.bundle ? "pending" : "danger"} className="status-chip--compact">
                           {row.item_code || row.bundle ? "Linked · not sent to POS" : "SKU not in catalog"}
                         </StatusBadge>
