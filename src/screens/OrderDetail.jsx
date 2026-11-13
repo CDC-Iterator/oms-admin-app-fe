@@ -107,7 +107,6 @@ const TERMINAL_STAGE_LABELS = { delivered: "Delivered", rto: "RTO / delivery fai
 // since it's the one with no parcel dimensions to fill in.
 const COURIER_OPTIONS = [
   { value: "manual", label: "Manual" },
-  { value: "shipway:automatic", courier: "shipway", carrier: "automatic", label: "Shipway · Automatic" },
   { value: "shipway:delhivery", courier: "shipway", carrier: "delhivery", label: "Shipway · Delhivery" },
   { value: "shipway:bluedart", courier: "shipway", carrier: "bluedart", label: "Shipway · Bluedart" },
   { value: "shipdelight", label: "Shipdelight" },
