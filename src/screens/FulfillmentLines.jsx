@@ -51,7 +51,9 @@ const ALL_PARAMS = { stage: "all" };
 const READY = "ready_to_ship";
 const AWAITING = "awaiting_unit";
 const COURIERS = [
-  { value: "shipway", label: "Shipway" },
+  { value: "shipway:automatic", label: "Shipway · Automatic" },
+  { value: "shipway:delhivery", label: "Shipway · Delhivery" },
+  { value: "shipway:bluedart", label: "Shipway · Bluedart" },
   { value: "shipdelight", label: "Shipdelight" },
   { value: "quicklee", label: "Quicklee" },
   { value: "manual", label: "Manual (enter AWB and carrier)" },
@@ -220,7 +222,7 @@ export default function FulfillmentLines() {
   const clearSelection = () => (selectEnabled ? setSelected(new Map()) : setLabelSel(new Map()));
   const [bookOpen, setBookOpen] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
-  const [courier, setCourier] = useState("shipway");
+  const [courier, setCourier] = useState("shipway:automatic");
   const { showToast } = useToast();
   const [createManual, { isLoading: bookingManual, error: manualError }] = useCreateManualShipmentMutation();
   const [carrier, setCarrier] = useState(MANUAL_CARRIERS[0]);
@@ -265,7 +267,8 @@ export default function FulfillmentLines() {
   const submitBook = async () => {
     if (isManual) return submitManual();
     try {
-      setBookResult(await book({ courier, line_ids: [...selected.keys()] }).unwrap());
+      const [courierName, carrierName] = courier.split(":");
+      setBookResult(await book({ courier: courierName, carrier: carrierName, line_ids: [...selected.keys()] }).unwrap());
     } catch {
       /* shown from bookError */
     }
@@ -571,7 +574,7 @@ export default function FulfillmentLines() {
           {bookResult ? (
             <div className="min-h-0 space-y-2 overflow-y-auto text-sm">
               <p className="font-medium">
-                {bookResult.queued.length} shipment{bookResult.queued.length === 1 ? "" : "s"} queued with {courier}.
+                {bookResult.queued.length} shipment{bookResult.queued.length === 1 ? "" : "s"} queued with {COURIERS.find((c) => c.value === courier)?.label ?? courier}.
               </p>
               <ul className="space-y-1 text-xs">
                 {bookResult.queued.map((q) => (
