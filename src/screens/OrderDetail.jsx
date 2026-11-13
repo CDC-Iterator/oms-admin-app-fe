@@ -107,7 +107,9 @@ const TERMINAL_STAGE_LABELS = { delivered: "Delivered", rto: "RTO / delivery fai
 // since it's the one with no parcel dimensions to fill in.
 const COURIER_OPTIONS = [
   { value: "manual", label: "Manual" },
-  { value: "shipway", label: "Shipway" },
+  { value: "shipway:automatic", courier: "shipway", carrier: "automatic", label: "Shipway · Automatic" },
+  { value: "shipway:delhivery", courier: "shipway", carrier: "delhivery", label: "Shipway · Delhivery" },
+  { value: "shipway:bluedart", courier: "shipway", carrier: "bluedart", label: "Shipway · Bluedart" },
   { value: "shipdelight", label: "Shipdelight" },
   { value: "quicklee", label: "Quicklee" },
 ];
@@ -281,7 +283,7 @@ function BookingField({ label, unit, name, known, form, set, className = "", ...
 function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, open, onOpenChange, onCreated }) {
   // Only couriers the order's allocated_location is actually configured for
   // (warehouse_id/address on file) — "manual" always qualifies.
-  const courierOptions = COURIER_OPTIONS.filter((o) => (availableCouriers ?? ["manual"]).includes(o.value));
+  const courierOptions = COURIER_OPTIONS.filter((o) => (availableCouriers ?? ["manual"]).includes(o.courier ?? o.value));
   const isEditing = Boolean(shipment);
   // Delivered is terminal — the shipment as it stood when the dialog
   // opened, never the in-progress dropdown pick, or setting *to* delivered
@@ -379,7 +381,8 @@ function ShipmentDialog({ orderId, shipment, shippableLines, availableCouriers, 
         // (apps.fulfilment.tasks), so no Shipment row exists to show yet.
         await createShipment({
           orderId,
-          courier: form.courier,
+          courier: COURIER_OPTIONS.find((o) => o.value === form.courier)?.courier ?? form.courier,
+          carrier: COURIER_OPTIONS.find((o) => o.value === form.courier)?.carrier,
           line_items: shippableLines.map((li) => ({ line_item: li.id, qty: li.remaining })),
           weight_kg: Number(form.weightG) / 1000,
           length_cm: form.lengthCm ? Number(form.lengthCm) : undefined,

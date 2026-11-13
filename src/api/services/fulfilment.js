@@ -12,10 +12,10 @@ export const fulfilmentApi = omsApi.injectEndpoints({
       providesTags: (result, error, orderId) => [{ type: "shipments", id: orderId }],
     }),
     createShipment: builder.mutation({
-      query: ({ orderId, courier, line_items, weight_kg, length_cm, breadth_cm, height_cm }) => ({
+      query: ({ orderId, courier, carrier, line_items, weight_kg, length_cm, breadth_cm, height_cm }) => ({
         url: `/api/orders/${orderId}/shipments/`,
         method: "POST",
-        body: { courier, line_items, weight_kg, length_cm, breadth_cm, height_cm },
+        body: { courier, carrier, line_items, weight_kg, length_cm, breadth_cm, height_cm },
       }),
       // "orders" too — the order's own line_items[].shipments summary
       // (grouping, coarse status/tone in the Lines card) comes from
