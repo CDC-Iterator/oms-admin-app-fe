@@ -266,7 +266,7 @@ export default function InventoryList() {
 
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Input
-          placeholder="Search item code, location…"
+          placeholder="Search item code, product, colour, size or location…"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full"

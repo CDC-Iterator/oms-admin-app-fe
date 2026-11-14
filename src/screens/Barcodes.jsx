@@ -133,7 +133,7 @@ export default function Barcodes() {
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <div className="relative min-w-48 flex-1">
           <Input
-            placeholder="Search barcode, item code or product…"
+            placeholder="Search barcode, item code, product, colour or size…"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pr-9"
