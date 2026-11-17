@@ -32,7 +32,7 @@ import { formatPlacedDate } from "../lib/utils.js";
 
 const PAGE_SIZE = 50;
 // Column widths live on a <colgroup> so the table keeps its layout when the action bar replaces the header.
-const COLUMN_WIDTHS = [3, 19, 8, 8, 9, 3, 8, 12, 8, 9, 7, 6];
+const COLUMN_WIDTHS = [3, 16, 8, 8, 9, 8, 3, 8, 10, 7, 8, 6, 6];
 // LineFulfillment.Stage — apps.orders.models. `all` (the "All" tab) turns the stage filter off.
 const STAGES = [
   { value: "ready_to_ship", label: "Ready to ship" },
@@ -63,6 +63,7 @@ const COLUMNS = [
   { id: "item_code", header: "Item" },
   { id: "order", header: "Order", meta: { filterIds: true, filterParam: "order_ids" } },
   { id: "placed_at", header: "Date", meta: { filterDateRange: true, filterParam: "placed" } },
+  { id: "shipped_at", header: "Processed" },
   { id: "stage", header: "Stage", enableSorting: false, meta: { filterOptions: STAGES, filterParam: "stage", filterMulti: true } },
 ];
 
@@ -187,7 +188,8 @@ export default function FulfillmentLines() {
   useEffect(() => {
     setLabelSel(new Map());
   }, [stage, labelsEnabled]);
-  const labelRows = rows.filter((r) => r.has_label && r.shipment_id);
+  const pickable = (r) => r.shipment_id && (r.has_label || stage === "packed");
+  const labelRows = rows.filter(pickable);
   const pageLabelsSelected = labelRows.length > 0 && labelRows.every((r) => labelSel.has(r.shipment_id));
   const toggleLabel = (row) =>
     setLabelSel((prev) => {
@@ -361,9 +363,9 @@ export default function FulfillmentLines() {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={downloadingLabels}
+                          disabled={downloadingLabels || ![...labelSel.values()].some((r) => r.has_label)}
                           onClick={async () => {
-                            if (await downloadLabels([...labelSel.keys()])) setLabelSel(new Map());
+                            if (await downloadLabels([...labelSel.values()].filter((r) => r.has_label).map((r) => r.shipment_id))) setLabelSel(new Map());
                           }}
                         >
                           <Download className="size-3.5" />
@@ -406,6 +408,9 @@ export default function FulfillmentLines() {
                 <TableHead className="w-[9%] shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("placed_at")} title="Date" />
                 </TableHead>
+                <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
+                  <ColumnHeader column={table.getColumn("shipped_at")} title="Processed" />
+                </TableHead>
                 <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)] text-center">Qty</TableHead>
                 <TableHead className="shadow-[inset_0_-1px_0_0_var(--border)]">
                   <ColumnHeader column={table.getColumn("stage")} title="Stage" />
@@ -425,7 +430,7 @@ export default function FulfillmentLines() {
                 <TableRow key={row.row_id ?? row.line_id} data-state={selected.has(row.line_id) || labelSel.has(row.shipment_id) ? "selected" : undefined}>
                   {labelsEnabled && (
                     <TableCell>
-                      {row.has_label && row.shipment_id && (
+                      {pickable(row) && (
                         <input
                           type="checkbox"
                           className="oms-checkbox mx-auto"
@@ -480,6 +485,7 @@ export default function FulfillmentLines() {
                     {row.invoice_id || "—"}
                   </TableCell>
                   <TableCell className="truncate">{formatPlacedDate(row.placed_at)}</TableCell>
+                  <TableCell className="truncate">{row.shipped_at ? formatPlacedDate(row.shipped_at) : "—"}</TableCell>
                   <TableCell className="text-center font-mono tabular-nums">{row.qty}</TableCell>
                   <TableCell>
                     <StatusBadge tone={STAGE_TONE[row.stage] ?? "neutral"} className="status-chip--compact">
