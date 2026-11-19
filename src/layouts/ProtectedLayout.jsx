@@ -16,6 +16,7 @@ const PAGE_TITLES = {
   "/catalog/barcodes": "Barcodes",
   "/catalog/channel-products": "Channel Products",
   "/catalog/unmapped": "Unmapped SKUs",
+  "/catalog/import": "Product Import",
   "/settings/locations": "Locations",
   "/settings/exports": "Exports",
   "/settings/channels": "Channels",
