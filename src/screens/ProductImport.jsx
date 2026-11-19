@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FileDown, Loader2, Upload } from "lucide-react";
+import { FileDown, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Button } from "@/components/ui/button.jsx";
@@ -151,8 +151,71 @@ function JobPanel({ id, onClose }) {
   );
 }
 
-export default function ProductImport() {
+const formatSize = (bytes) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+const ACCEPTED = /\.(xlsx|csv)$/i;
+
+function Dropzone({ file, onFile, disabled }) {
   const inputRef = useRef(null);
+  const [over, setOver] = useState(false);
+  const { showToast } = useToast();
+  const pick = (f) => {
+    if (!f) return;
+    if (!ACCEPTED.test(f.name)) return showToast("Upload an .xlsx or .csv file.");
+    onFile(f);
+  };
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => !disabled && inputRef.current?.click()}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !disabled && inputRef.current?.click()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!disabled) setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        if (!disabled) pick(e.dataTransfer.files?.[0]);
+      }}
+      className={`flex min-h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors ${
+        over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/40"
+      } ${disabled ? "pointer-events-none opacity-60" : ""}`}
+    >
+      <input ref={inputRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+      {file ? (
+        <div className="flex items-center gap-3">
+          <FileSpreadsheet className="size-8 text-primary" />
+          <div className="text-left">
+            <p className="text-sm font-medium">{file.name}</p>
+            <p className="text-xs text-muted-foreground">{formatSize(file.size)} · click or drop to replace</p>
+          </div>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            aria-label="Remove file"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFile(null);
+            }}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      ) : (
+        <>
+          <Upload className="size-8 text-muted-foreground" />
+          <p className="text-sm font-medium">Drop the product master here, or click to browse</p>
+          <p className="text-xs text-muted-foreground">.xlsx or .csv · up to 25 MB</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function ProductImport() {
   const [file, setFile] = useState(null);
   const [selected, setSelected] = useState(null);
   const [create, { isLoading: uploading }] = useCreateProductImportMutation();
@@ -166,32 +229,27 @@ export default function ProductImport() {
       const job = await create(file).unwrap();
       setSelected(job.id);
       setFile(null);
-      if (inputRef.current) inputRef.current.value = "";
     } catch (err) {
       showToast(formatApiError(err));
     }
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-auto">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-6 [&>*]:shrink-0">
       <p className="text-sm text-muted-foreground">
         Upload the POS product master (.xlsx or .csv, any number of sheets) with the columns {COLUMNS_HELP}. New item codes are created, existing
         ones are only filled in, and an item whose style differs from OMS is reported, never moved. It runs in the background.
       </p>
 
       <Card>
-        <CardContent className="flex flex-wrap items-center gap-3 pt-4">
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".xlsx,.csv"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm"
-          />
-          <Button onClick={start} disabled={!file || uploading || running}>
-            {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Import
-          </Button>
-          {running && <span className="text-xs text-muted-foreground">An import is running — wait for it to finish.</span>}
+        <CardContent className="space-y-3">
+          <Dropzone file={file} onFile={setFile} disabled={uploading} />
+          <div className="flex items-center gap-3">
+            <Button onClick={start} disabled={!file || uploading || running}>
+              {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Import
+            </Button>
+            {running && <span className="text-xs text-muted-foreground">An import is running — wait for it to finish.</span>}
+          </div>
         </CardContent>
       </Card>
 
