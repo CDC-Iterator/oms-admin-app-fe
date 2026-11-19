@@ -12,6 +12,7 @@ import ActivityLog from "./screens/ActivityLog.jsx";
 import ReportBuilderList from "./screens/ReportBuilderList.jsx";
 import ReportEditor from "./screens/ReportEditor.jsx";
 import Exports from "./screens/Exports.jsx";
+import ProductImport from "./screens/ProductImport.jsx";
 import ChannelProducts from "./screens/ChannelProducts.jsx";
 import ChannelsList from "./screens/ChannelsList.jsx";
 import Dashboard from "./screens/Dashboard.jsx";
@@ -63,6 +64,7 @@ function AppRoutes() {
             element={<ChannelProducts />}
           />
           <Route path="/catalog/unmapped" element={<UnmappedSkus />} />
+          <Route path="/catalog/import" element={<ProductImport />} />
           <Route path="/reports" element={<ReportBuilderList />} />
           <Route path="/reports/new" element={<ReportEditor />} />
           <Route path="/reports/:id" element={<ReportEditor />} />

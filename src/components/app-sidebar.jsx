@@ -16,6 +16,7 @@ import {
   UserCircle,
   UserCog,
   Warehouse,
+  Upload,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -51,6 +52,10 @@ const CATALOG_ITEMS = [
     url: "/catalog/channel-products",
     icon: ShoppingBag,
   },
+];
+
+const ADMIN_CATALOG_ITEMS = [
+  { title: "Product Import", url: "/catalog/import", icon: Upload },
 ];
 
 const SETTINGS_ITEMS = [
@@ -126,6 +131,9 @@ export function AppSidebar({ ...props }) {
             <SidebarGroupContent>
               <SidebarMenu>
                 <NavItems items={CATALOG_ITEMS} pathname={location.pathname} />
+                {(user?.is_superuser || user?.role === "admin") && (
+                  <NavItems items={ADMIN_CATALOG_ITEMS} pathname={location.pathname} />
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
