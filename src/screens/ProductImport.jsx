@@ -3,7 +3,8 @@ import { FileDown, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 
 import { StatusBadge } from "../components/status-badge.jsx";
 import { Button } from "@/components/ui/button.jsx";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx";
+import { Card, CardContent } from "@/components/ui/card.jsx";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx";
 import {
   useCreateProductImportMutation,
@@ -125,7 +126,7 @@ function Summary({ job }) {
   );
 }
 
-function JobPanel({ id, onClose }) {
+function JobPanel({ id }) {
   const { data: job } = useGetProductImportQuery(id, {
     pollingInterval: POLL_MS,
     skipPollingIfUnfocused: true,
@@ -133,21 +134,16 @@ function JobPanel({ id, onClose }) {
   if (!job) return <p className="text-sm text-muted-foreground">Loading…</p>;
   const active = ACTIVE.includes(job.status);
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          {job.filename}
-          <StatusBadge tone={EXPORT_TONE[job.status]}>{job.status}</StatusBadge>
-        </CardTitle>
-        <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {active && <Progress done={job.processed_rows} total={job.total_rows} />}
-        {job.status === "failed" && <p className="text-sm text-destructive">{job.error || "The import failed."}</p>}
-        {(job.status === "succeeded" || (active && job.counts && Object.keys(job.counts).length > 0)) && <Summary job={job} />}
-        {!active && <p className="text-xs text-muted-foreground">Started {formatExportWhen(job.started_at)} · took {exportDuration(job)} · by {job.owner_name}</p>}
-      </CardContent>
-    </Card>
+    <div className="mx-auto w-full max-w-7xl space-y-4">
+      <DialogTitle className="flex items-center gap-2 pr-10 text-base font-semibold">
+        {job.filename}
+        <StatusBadge tone={EXPORT_TONE[job.status]}>{job.status}</StatusBadge>
+      </DialogTitle>
+      {active && <Progress done={job.processed_rows} total={job.total_rows} />}
+      {job.status === "failed" && <p className="text-sm text-destructive">{job.error || "The import failed."}</p>}
+      {(job.status === "succeeded" || (active && job.counts && Object.keys(job.counts).length > 0)) && <Summary job={job} />}
+      {!active && <p className="text-xs text-muted-foreground">Started {formatExportWhen(job.started_at)} · took {exportDuration(job)} · by {job.owner_name}</p>}
+    </div>
   );
 }
 
@@ -253,7 +249,11 @@ export default function ProductImport() {
         </CardContent>
       </Card>
 
-      {selected && <JobPanel id={selected} onClose={() => setSelected(null)} />}
+      <Dialog open={selected != null} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="top-0 left-0 h-dvh w-screen max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none p-6 sm:max-w-none">
+          {selected != null && <JobPanel id={selected} />}
+        </DialogContent>
+      </Dialog>
 
       <div>
         <h2 className="mb-2 text-sm font-semibold">Past imports</h2>
