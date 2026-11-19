@@ -240,11 +240,11 @@ export default function ProductImport() {
       <Card>
         <CardContent className="space-y-3">
           <Dropzone file={file} onFile={setFile} disabled={uploading} />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end gap-3">
+            {running && <span className="text-xs text-muted-foreground">An import is running — wait for it to finish.</span>}
             <Button onClick={start} disabled={!file || uploading || running}>
               {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Import
             </Button>
-            {running && <span className="text-xs text-muted-foreground">An import is running — wait for it to finish.</span>}
           </div>
         </CardContent>
       </Card>
