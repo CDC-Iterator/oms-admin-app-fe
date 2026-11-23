@@ -40,6 +40,11 @@ export const fulfilmentApi = omsApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }, "orders"],
     }),
+    // Cancels a booked shipment at its courier (Quicklee, ShipDelight) or a manual AWB; its units can be booked again.
+    cancelShipment: builder.mutation({
+      query: ({ orderId, shipmentId }) => ({ url: `/api/orders/${orderId}/shipments/${shipmentId}/cancel/`, method: "POST", body: {} }),
+      invalidatesTags: (result, error, { orderId }) => [{ type: "shipments", id: orderId }, "orders"],
+    }),
     // One merged PDF of up to 100 shipments' labels; the reply lists any skipped (no label), with their AWBs.
     downloadShipmentLabels: builder.mutation({
       query: (shipment_ids) => ({ url: "/api/orders/fulfillment-lines/labels/", method: "POST", body: { shipment_ids } }),
@@ -61,6 +66,7 @@ export const {
   useCreateShipmentMutation,
   useCreateManualShipmentMutation,
   useUpdateShipmentMutation,
+  useCancelShipmentMutation,
   useGetShipmentLabelUrlMutation,
   useDownloadShipmentLabelsMutation,
   useDispatchShipmentsMutation,

@@ -1,5 +1,20 @@
+import { useState } from "react";
+
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog.jsx";
+import { Button } from "@/components/ui/button.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx";
 import { StatusBadge } from "@/components/status-badge.jsx";
+import { useCancelShipmentMutation } from "../api/services/fulfilment.js";
+import { useToast } from "../hooks/useToast.js";
+import { formatApiError } from "../lib/errors.js";
 import { shipmentTone } from "../lib/status.js";
 
 const when = (value) =>
@@ -25,8 +40,41 @@ function Tracking({ awb, url }) {
   );
 }
 
+function CancelShipmentDialog({ orderId, target, onClose }) {
+  const { showToast } = useToast();
+  const [cancelShipment, { isLoading }] = useCancelShipmentMutation();
+  const confirm = async () => {
+    try {
+      await cancelShipment({ orderId, shipmentId: target.id }).unwrap();
+      showToast(`Shipment ${target.awb} cancelled. Its items can be booked again.`);
+      onClose();
+    } catch (err) {
+      showToast(err?.data?.error ?? formatApiError(err));
+    }
+  };
+  return (
+    <AlertDialog open={Boolean(target)} onOpenChange={(open) => !open && !isLoading && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancel this shipment?</AlertDialogTitle>
+          <AlertDialogDescription>
+            AWB {target?.awb} will be cancelled with {target?.carrier}, and Shopify will show its items as unfulfilled. You can book them again afterwards.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogClose render={<Button variant="outline" />}>Keep it</AlertDialogClose>
+          <Button variant="destructive" onClick={confirm} disabled={isLoading}>
+            {isLoading ? "Cancelling…" : "Cancel shipment"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 // Where the order goes and how: the delivery address, the method, the warehouse, and every package booked or fulfilled.
 export function ShippingDetailsCard({ order, shipments }) {
+  const [cancelTarget, setCancelTarget] = useState(null);
   const a = order.shipping_address ?? {};
   const cityLine = [a.city, a.province, a.zip].filter(Boolean).join(", ");
   const packages = [
@@ -37,6 +85,9 @@ export function ShippingDetailsCard({ order, shipments }) {
         carrier: s.carrier_name || s.courier,
         awb: s.awb_number,
         url: s.tracking_url,
+        id: s.id,
+        canCancel: s.can_cancel,
+        cancelInPanel: s.status === "created" && !s.can_cancel && s.courier !== "manual",
         status: s.status === "created" ? (s.dispatched_at ? "dispatched" : s.has_label ? "packed" : "booked") : s.status,
         note: s.dispatched_at ? `Handed over ${when(s.dispatched_at)}` : `Booked ${when(s.created_at)}`,
       })),
@@ -78,11 +129,18 @@ export function ShippingDetailsCard({ order, shipments }) {
                 </div>
                 <Tracking awb={p.awb} url={p.url} />
                 <p className="text-muted-foreground">{p.note}</p>
+                {p.canCancel && (
+                  <Button variant="outline" size="xs" onClick={() => setCancelTarget({ id: p.id, awb: p.awb, carrier: p.carrier })}>
+                    Cancel shipment
+                  </Button>
+                )}
+                {p.cancelInPanel && <p className="text-muted-foreground">To cancel, use the courier&apos;s panel; the OMS updates once it reports it.</p>}
               </div>
             ))}
           </div>
         )}
       </CardContent>
+      <CancelShipmentDialog orderId={order.id} target={cancelTarget} onClose={() => setCancelTarget(null)} />
     </Card>
   );
 }
