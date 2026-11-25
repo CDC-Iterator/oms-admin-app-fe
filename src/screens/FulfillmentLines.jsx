@@ -53,6 +53,8 @@ const AWAITING = "awaiting_unit";
 const COURIERS = [
   { value: "shipway:delhivery", label: "Shipway · Delhivery" },
   { value: "shipway:bluedart", label: "Shipway · Bluedart" },
+  { value: "shipway:bluedart_all", label: "Shipway · Bluedart All" },
+  { value: "shipway:bluedart_dp", label: "Shipway · Bluedart DP" },
   { value: "shipdelight", label: "Shipdelight" },
   { value: "quicklee", label: "Quicklee" },
   { value: "manual", label: "Manual (enter AWB and carrier)" },
