@@ -111,6 +111,8 @@ const COURIER_OPTIONS = [
   { value: "shipway:bluedart", courier: "shipway", carrier: "bluedart", label: "Shipway · Bluedart" },
   { value: "shipway:bluedart_all", courier: "shipway", carrier: "bluedart_all", label: "Shipway · Bluedart All" },
   { value: "shipway:bluedart_dp", courier: "shipway", carrier: "bluedart_dp", label: "Shipway · Bluedart DP" },
+  { value: "shipway:bluedart_mumbai", courier: "shipway", carrier: "bluedart_mumbai", label: "Shipway · Bluedart Mumbai" },
+  { value: "shipway:delhivery_express", courier: "shipway", carrier: "delhivery_express", label: "Shipway · Delhivery Express" },
   { value: "shipdelight", label: "Shipdelight" },
   { value: "quicklee", label: "Quicklee" },
 ];

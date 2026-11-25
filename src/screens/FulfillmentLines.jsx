@@ -55,6 +55,8 @@ const COURIERS = [
   { value: "shipway:bluedart", label: "Shipway · Bluedart" },
   { value: "shipway:bluedart_all", label: "Shipway · Bluedart All" },
   { value: "shipway:bluedart_dp", label: "Shipway · Bluedart DP" },
+  { value: "shipway:bluedart_mumbai", label: "Shipway · Bluedart Mumbai" },
+  { value: "shipway:delhivery_express", label: "Shipway · Delhivery Express" },
   { value: "shipdelight", label: "Shipdelight" },
   { value: "quicklee", label: "Quicklee" },
   { value: "manual", label: "Manual (enter AWB and carrier)" },
